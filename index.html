@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER RACER - Police Siren Edition</title>
+  <title>ROADSTER - Canvas Edition</title>
 
   <style>
     body {
@@ -28,473 +28,21 @@
       opacity: 0.95;
     }
 
-    #game {
-      position: relative;
+    #wrap {
       width: 100%;
       max-width: 420px;
-      height: 75vh;
       margin: 0 auto;
-      background: linear-gradient(#1a1a1a, #0b0b0b);
+      position: relative;
+    }
+
+    canvas {
+      width: 100%;
+      height: 75vh;
       border: 4px solid #444;
       border-radius: 14px;
-      overflow: hidden;
+      background: linear-gradient(#1a1a1a, #0b0b0b);
+      display: block;
       box-shadow: 0 0 20px rgba(255,255,255,0.08);
-      transform-origin: center;
-      transition: transform 0.2s ease;
-    }
-
-    #game.speedZoom {
-      transform: scale(1.015);
-    }
-
-    /* Asphalt overlay */
-    #game::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        repeating-linear-gradient(
-          to bottom,
-          rgba(255,255,255,0.04),
-          rgba(255,255,255,0.04) 2px,
-          transparent 2px,
-          transparent 26px
-        ),
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,0.05), transparent 60%),
-        radial-gradient(circle at 70% 70%, rgba(255,255,255,0.04), transparent 60%);
-      opacity: 0.55;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* Yellow edges */
-    #game::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-left: 10px solid rgba(255,215,0,0.45);
-      border-right: 10px solid rgba(255,215,0,0.45);
-      box-shadow: inset 0 0 30px rgba(0,0,0,0.9);
-      pointer-events: none;
-      z-index: 3;
-    }
-
-    /* LIGHT REFLECTIONS */
-    #game .reflections {
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(to bottom,
-          rgba(255,255,255,0.00),
-          rgba(255,255,255,0.05),
-          rgba(255,255,255,0.00)
-        );
-      opacity: 0.25;
-      pointer-events: none;
-      z-index: 2;
-      animation: reflectionMove 1.5s linear infinite;
-    }
-
-    @keyframes reflectionMove {
-      0% { transform: translateY(-60px); }
-      100% { transform: translateY(120px); }
-    }
-
-    /* SPEED LINES */
-    #game .speedLines {
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.06),
-        rgba(255,255,255,0.06) 1px,
-        transparent 1px,
-        transparent 18px
-      );
-      opacity: 0;
-      pointer-events: none;
-      z-index: 4;
-      transition: opacity 0.3s ease;
-    }
-
-    #game.fast .speedLines {
-      opacity: 0.18;
-    }
-
-    /* FLASH */
-    #flash {
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,0.95);
-      opacity: 0;
-      pointer-events: none;
-      z-index: 500;
-      transition: opacity 0.25s;
-    }
-
-    /* SHAKE */
-    .shake {
-      animation: shake 0.2s linear infinite;
-    }
-
-    @keyframes shake {
-      0% { transform: translate(0px, 0px); }
-      25% { transform: translate(4px, -4px); }
-      50% { transform: translate(-4px, 4px); }
-      75% { transform: translate(4px, 4px); }
-      100% { transform: translate(-4px, -4px); }
-    }
-
-    .lane-line {
-      position: absolute;
-      width: 10px;
-      height: 80px;
-      background: rgba(255,255,255,0.55);
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(255,255,255,0.15);
-      z-index: 1;
-    }
-
-    /* PLAYER CAR */
-    #car {
-      position: absolute;
-      width: 62px;
-      height: 118px;
-      bottom: 28px;
-      background: linear-gradient(#ff1a1a, #9c0000);
-      border-radius: 16px;
-      border: 2px solid rgba(255,255,255,0.25);
-      box-shadow: 0 12px 25px rgba(0,0,0,0.65);
-      overflow: hidden;
-      transform-origin: center;
-      z-index: 30;
-    }
-
-    .crashed {
-      animation: spinCrash 1.6s ease-out forwards;
-      filter: brightness(0.55) contrast(1.2) saturate(0.7);
-    }
-
-    @keyframes spinCrash {
-      0% { transform: rotate(0deg) scale(1); }
-      35% { transform: rotate(340deg) scale(1.15); }
-      70% { transform: rotate(820deg) scale(0.95); }
-      100% { transform: rotate(1280deg) scale(0.75); }
-    }
-
-    #car .hood {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.18), transparent 55%);
-    }
-
-    #car .stripe {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 14px;
-      height: 100%;
-      background: rgba(255,255,255,0.22);
-      border-radius: 10px;
-    }
-
-    #car .window {
-      position: absolute;
-      top: 12px;
-      left: 10px;
-      width: 42px;
-      height: 30px;
-      background: linear-gradient(#0a0a0a, #222);
-      border-radius: 8px;
-      border: 2px solid rgba(255,255,255,0.18);
-    }
-
-    #car .lights {
-      position: absolute;
-      bottom: 8px;
-      left: 8px;
-      width: 46px;
-      height: 16px;
-      background: linear-gradient(to right, #ffe600, #ff6600);
-      border-radius: 8px;
-      opacity: 0.95;
-      box-shadow: 0 0 12px rgba(255,180,0,0.6);
-    }
-
-    #car .wheel {
-      position: absolute;
-      width: 12px;
-      height: 22px;
-      background: #050505;
-      border-radius: 6px;
-    }
-
-    #car .wheel.left1 { left: -5px; top: 18px; }
-    #car .wheel.left2 { left: -5px; bottom: 22px; }
-    #car .wheel.right1 { right: -5px; top: 18px; }
-    #car .wheel.right2 { right: -5px; bottom: 22px; }
-
-    #logo {
-      position: absolute;
-      top: 52px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 46px;
-      height: 46px;
-      background: #0a0a0a;
-      border-radius: 12px;
-      border: 2px solid rgba(255,255,255,0.35);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-weight: bold;
-      font-size: 20px;
-      color: white;
-    }
-
-    #logo span {
-      color: gold;
-      font-size: 24px;
-      margin-right: 2px;
-    }
-
-    #logoText {
-      position: absolute;
-      top: 98px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 10px;
-      letter-spacing: 2px;
-      opacity: 0.95;
-      font-weight: bold;
-    }
-
-    /* ENEMY BASE */
-    .enemy {
-      position: absolute;
-      width: 54px;
-      height: 104px;
-      border-radius: 14px;
-      border: 2px solid rgba(255,255,255,0.18);
-      box-shadow: 0 12px 25px rgba(0,0,0,0.55);
-      overflow: hidden;
-      z-index: 15;
-      transform-origin: center;
-    }
-
-    .enemy .hood {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent 55%);
-    }
-
-    .enemy .window {
-      position: absolute;
-      top: 10px;
-      left: 8px;
-      width: 38px;
-      height: 26px;
-      background: linear-gradient(#111, #222);
-      border-radius: 7px;
-      border: 2px solid rgba(255,255,255,0.15);
-    }
-
-    .enemy .lights {
-      position: absolute;
-      bottom: 7px;
-      left: 7px;
-      width: 40px;
-      height: 14px;
-      border-radius: 7px;
-      opacity: 0.85;
-      background: linear-gradient(to right, rgba(255,255,255,0.9), rgba(255,150,0,0.7));
-    }
-
-    .enemy .wheel {
-      position: absolute;
-      width: 10px;
-      height: 20px;
-      background: #0a0a0a;
-      border-radius: 6px;
-    }
-
-    .enemy .wheel.left1 { left: -5px; top: 16px; }
-    .enemy .wheel.left2 { left: -5px; bottom: 20px; }
-    .enemy .wheel.right1 { right: -5px; top: 16px; }
-    .enemy .wheel.right2 { right: -5px; bottom: 20px; }
-
-    /* MODELS */
-    .model-sedan { background: linear-gradient(#999999, #333333); }
-    .model-sport { background: linear-gradient(#00c6ff, #003cff); }
-    .model-taxi  { background: linear-gradient(#ffcc00, #c48d00); }
-
-    .model-taxi::after {
-      content: "TAXI";
-      position: absolute;
-      top: 48px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 11px;
-      font-weight: bold;
-      color: black;
-      opacity: 0.85;
-    }
-
-    /* POLICE - BIGGER */
-    .model-police {
-      width: 62px;
-      height: 118px;
-      background: linear-gradient(#0c0c0c, #222);
-      border-radius: 16px;
-      border: 2px solid rgba(0,150,255,0.55);
-      box-shadow: 0 0 22px rgba(0,150,255,0.25);
-    }
-
-    .model-police::after {
-      content: "POLICE";
-      position: absolute;
-      top: 56px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 10px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      color: rgba(255,255,255,0.95);
-      text-shadow: 0 0 10px rgba(0,150,255,0.8);
-    }
-
-    /* SIRENS - 2x faster + stronger glow */
-    .sirens {
-      position: absolute;
-      top: 4px;
-      left: 14px;
-      width: 34px;
-      height: 10px;
-      border-radius: 6px;
-      background: linear-gradient(to right, rgba(0,0,255,1), rgba(255,0,0,1));
-      opacity: 0.3;
-      animation: sirenBlink 0.1s infinite alternate;
-      box-shadow: 0 0 26px rgba(0,150,255,1);
-    }
-
-    @keyframes sirenBlink {
-      0% { opacity: 0.25; filter: brightness(0.8); }
-      100% { opacity: 1; filter: brightness(2); }
-    }
-
-    /* POLICE LIGHT BEAM ON ROAD */
-    .policeGlow {
-      position: absolute;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 120px;
-      height: 240px;
-      background: linear-gradient(
-        to bottom,
-        rgba(0,150,255,0.22),
-        rgba(255,0,0,0.18),
-        transparent
-      );
-      opacity: 0.6;
-      filter: blur(6px);
-      border-radius: 50%;
-      animation: glowPulse 0.12s infinite alternate;
-      pointer-events: none;
-      z-index: 5;
-    }
-
-    @keyframes glowPulse {
-      0% { opacity: 0.35; transform: translateX(-50%) scale(0.95); }
-      100% { opacity: 0.75; transform: translateX(-50%) scale(1.05); }
-    }
-
-    /* TRUCK */
-    .model-truck {
-      width: 64px;
-      height: 118px;
-      background: linear-gradient(#666, #222);
-      border-radius: 12px;
-    }
-
-    /* VAN */
-    .model-van {
-      width: 60px;
-      height: 114px;
-      background: linear-gradient(#ffffff, #aaaaaa);
-      border-radius: 14px;
-    }
-
-    /* Enemy crash */
-    .enemy-crashed {
-      animation: enemySpin 2.2s ease-out forwards;
-      filter: brightness(0.45) contrast(1.3) saturate(0.5);
-      z-index: 40;
-    }
-
-    @keyframes enemySpin {
-      0% { transform: rotate(0deg) translate(0,0) scale(1); opacity: 1; }
-      35% { transform: rotate(340deg) translate(50px, 50px) scale(1.1); opacity: 1; }
-      75% { transform: rotate(920deg) translate(-120px, 180px) scale(0.85); opacity: 0.85; }
-      100% { transform: rotate(1400deg) translate(-220px, 320px) scale(0.65); opacity: 0; }
-    }
-
-    /* EXPLOSION */
-    .explosion {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: radial-gradient(circle, yellow, orange, red, transparent);
-      box-shadow: 0 0 70px rgba(255,120,0,1);
-      pointer-events: none;
-      z-index: 600;
-      animation: boom 1.8s ease-out forwards;
-    }
-
-    @keyframes boom {
-      0% { transform: scale(0.6); opacity: 1; }
-      50% { transform: scale(8); opacity: 0.95; }
-      100% { transform: scale(12); opacity: 0; }
-    }
-
-    /* SMOKE */
-    .smoke {
-      position: absolute;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: rgba(120,120,120,0.75);
-      filter: blur(3px);
-      pointer-events: none;
-      z-index: 550;
-      animation: smokeUp 3.5s ease-out forwards;
-    }
-
-    @keyframes smokeUp {
-      0% { transform: scale(0.6) translate(0,0); opacity: 0.8; }
-      100% { transform: scale(3.5) translate(0,-150px); opacity: 0; }
-    }
-
-    /* PARTICLES */
-    .particle {
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      background: orange;
-      border-radius: 50%;
-      pointer-events: none;
-      box-shadow: 0 0 18px rgba(255,150,0,0.9);
-      animation: particleMove 1.4s ease-out forwards;
-      z-index: 610;
-    }
-
-    @keyframes particleMove {
-      0% { transform: scale(1.2) translate(0,0); opacity: 1; }
-      100% { transform: scale(0.2) translate(var(--dx), var(--dy)); opacity: 0; }
     }
 
     /* CONTROLS */
@@ -552,17 +100,18 @@
       flex-direction: column;
       text-align: center;
       z-index: 999;
+      border-radius: 14px;
     }
 
     #gameOver h1 {
       margin: 0;
-      font-size: 40px;
+      font-size: 42px;
       color: gold;
       text-shadow: 0 0 15px rgba(255,215,0,0.3);
     }
 
     #gameOver p {
-      margin: 10px 0;
+      margin: 12px 0;
       opacity: 0.9;
     }
 
@@ -586,25 +135,8 @@
   <div>Rychlost: <span id="speed">1</span>x</div>
 </div>
 
-<div id="game">
-  <div id="flash"></div>
-  <div class="reflections"></div>
-  <div class="speedLines"></div>
-
-  <div id="car">
-    <div class="hood"></div>
-    <div class="stripe"></div>
-    <div class="window"></div>
-    <div class="lights"></div>
-
-    <div class="wheel left1"></div>
-    <div class="wheel left2"></div>
-    <div class="wheel right1"></div>
-    <div class="wheel right2"></div>
-
-    <div id="logo"><span>★</span>R</div>
-    <div id="logoText">ROADSTER</div>
-  </div>
+<div id="wrap">
+  <canvas id="game"></canvas>
 
   <div id="gameOver">
     <h1>CRASHED!</h1>
@@ -619,9 +151,8 @@
 </div>
 
 <script>
-  const game = document.getElementById("game");
-  const car = document.getElementById("car");
-  const flash = document.getElementById("flash");
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
 
   const scoreEl = document.getElementById("score");
   const speedEl = document.getElementById("speed");
@@ -631,194 +162,280 @@
   const leftBtn = document.getElementById("leftBtn");
   const rightBtn = document.getElementById("rightBtn");
 
+  let w, h;
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+
+    w = rect.width;
+    h = rect.height;
+  }
+
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  // GAME STATE
   let score = 0;
-  let speed = 4;
-  let gameRunning = true;
-  let enemies = [];
-  let laneLines = [];
+  let speed = 5;
   let frame = 0;
-
+  let running = true;
   let crashed = false;
-
-  let carX = 0;
-  let targetX = 0;
-  const carMoveSpeed = 7;
+  let timeScale = 1;
 
   let holdingLeft = false;
   let holdingRight = false;
 
-  let timeScale = 1;
+  // PLAYER
+  const player = {
+    x: w / 2,
+    y: h - 140,
+    width: 62,
+    height: 118,
+    targetX: w / 2,
+    angle: 0,
+    spinVel: 0,
+    scale: 1
+  };
 
-  const models = ["model-sedan", "model-sport", "model-taxi", "model-police", "model-truck", "model-van"];
-
-  function createLaneLines() {
-    for (let i = 0; i < 10; i++) {
-      const line = document.createElement("div");
-      line.classList.add("lane-line");
-      line.style.top = (i * 80) + "px";
-      game.appendChild(line);
-      laneLines.push(line);
-    }
+  // ROAD LINES
+  let laneLines = [];
+  for (let i = 0; i < 12; i++) {
+    laneLines.push({ x: w/2, y: i * 90 });
   }
 
-  function moveLaneLines() {
-    laneLines.forEach(line => {
-      let top = parseInt(line.style.top);
-      top += speed * timeScale;
-      if (top > game.clientHeight) top = -80;
-      line.style.top = top + "px";
+  // ENEMIES
+  let enemies = [];
+
+  // PARTICLES
+  let particles = [];
+  let smokes = [];
+
+  function rand(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  function spawnEnemy() {
+    const types = ["sedan", "sport", "taxi", "police", "van", "truck"];
+    const type = types[Math.floor(Math.random() * types.length)];
+
+    let ew = 54, eh = 104;
+    if (type === "police") { ew = 62; eh = 118; }
+    if (type === "truck") { ew = 64; eh = 118; }
+    if (type === "van") { ew = 60; eh = 114; }
+
+    enemies.push({
+      x: rand(40, w - 100),
+      y: -200,
+      width: ew,
+      height: eh,
+      type,
+      angle: 0,
+      crashed: false,
+      spinVel: 0,
+      vx: rand(-1.2, 1.2)
     });
   }
 
-  function createEnemy() {
-    const enemy = document.createElement("div");
-    enemy.classList.add("enemy");
+  function drawRoad() {
+    // background
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "#1a1a1a");
+    grad.addColorStop(1, "#0b0b0b");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
 
-    const model = models[Math.floor(Math.random() * models.length)];
-    enemy.classList.add(model);
+    // yellow edges
+    ctx.fillStyle = "rgba(255,215,0,0.35)";
+    ctx.fillRect(0, 0, 10, h);
+    ctx.fillRect(w - 10, 0, 10, h);
 
-    enemy.innerHTML = `
-      <div class="hood"></div>
-      <div class="window"></div>
-      <div class="lights"></div>
-      <div class="wheel left1"></div>
-      <div class="wheel left2"></div>
-      <div class="wheel right1"></div>
-      <div class="wheel right2"></div>
-    `;
+    // subtle reflections
+    ctx.fillStyle = "rgba(255,255,255,0.03)";
+    ctx.fillRect(0, (frame * 3) % h - 80, w, 120);
 
-    if (model === "model-police") {
-      enemy.innerHTML += `<div class="sirens"></div>`;
-      enemy.innerHTML += `<div class="policeGlow"></div>`;
-    }
-
-    const minX = 20;
-    const maxX = game.clientWidth - 90;
-
-    enemy.style.left = (Math.random() * (maxX - minX) + minX) + "px";
-    enemy.style.top = "-200px";
-
-    game.appendChild(enemy);
-    enemies.push(enemy);
+    // lane lines
+    laneLines.forEach(line => {
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.fillRect(line.x - 5, line.y, 10, 80);
+    });
   }
 
-  function moveEnemies() {
-    enemies.forEach((enemy, index) => {
-      let top = parseInt(enemy.style.top);
-      top += (speed + 1.2) * timeScale;
-      enemy.style.top = top + "px";
+  function updateRoad() {
+    laneLines.forEach(line => {
+      line.y += speed * timeScale;
+      if (line.y > h) line.y = -80;
+    });
+  }
 
-      if (top > game.clientHeight + 220) {
-        enemy.remove();
-        enemies.splice(index, 1);
+  function drawCar(x, y, width, height, colorTop, colorBottom, angle=0, label=null, siren=false) {
+    ctx.save();
+    ctx.translate(x + width/2, y + height/2);
+    ctx.rotate(angle);
+
+    // body
+    const grad = ctx.createLinearGradient(0, -height/2, 0, height/2);
+    grad.addColorStop(0, colorTop);
+    grad.addColorStop(1, colorBottom);
+
+    ctx.fillStyle = grad;
+    roundRect(-width/2, -height/2, width, height, 16, true);
+
+    // hood highlight
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    roundRect(-width/2, -height/2, width, height * 0.5, 16, true);
+
+    // stripe
+    ctx.fillStyle = "rgba(255,255,255,0.15)";
+    roundRect(-7, -height/2, 14, height, 10, true);
+
+    // window
+    ctx.fillStyle = "#111";
+    roundRect(-width/2 + 10, -height/2 + 12, width - 20, 30, 8, true);
+
+    // lights
+    ctx.fillStyle = "rgba(255,200,0,0.85)";
+    roundRect(-width/2 + 8, height/2 - 24, width - 16, 14, 7, true);
+
+    // wheels
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(-width/2 - 5, -height/2 + 18, 10, 22);
+    ctx.fillRect(-width/2 - 5, height/2 - 40, 10, 22);
+    ctx.fillRect(width/2 - 5, -height/2 + 18, 10, 22);
+    ctx.fillRect(width/2 - 5, height/2 - 40, 10, 22);
+
+    // label
+    if (label) {
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "bold 10px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(label, 0, 5);
+    }
+
+    // siren bar
+    if (siren) {
+      ctx.fillStyle = (frame % 6 < 3) ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
+      roundRect(-18, -height/2 + 4, 36, 10, 6, true);
+
+      // glow
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = (frame % 6 < 3) ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
+      roundRect(-50, -height/2 + 10, 100, 220, 60, true);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function roundRect(x, y, width, height, radius, fill) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, radius);
+    ctx.arcTo(x + width, y + height, x, y + height, radius);
+    ctx.arcTo(x, y + height, x, y, radius);
+    ctx.arcTo(x, y, x + width, y, radius);
+    ctx.closePath();
+    if (fill) ctx.fill();
+  }
+
+  function drawPlayer() {
+    drawCar(
+      player.x,
+      player.y,
+      player.width,
+      player.height,
+      "#ff1a1a",
+      "#9c0000",
+      player.angle,
+      "ROADSTER",
+      false
+    );
+  }
+
+  function drawEnemies() {
+    enemies.forEach(e => {
+      if (e.type === "sedan") drawCar(e.x, e.y, e.width, e.height, "#999", "#333", e.angle);
+      if (e.type === "sport") drawCar(e.x, e.y, e.width, e.height, "#00c6ff", "#003cff", e.angle);
+      if (e.type === "taxi") drawCar(e.x, e.y, e.width, e.height, "#ffcc00", "#c48d00", e.angle, "TAXI");
+      if (e.type === "van") drawCar(e.x, e.y, e.width, e.height, "#fff", "#aaa", e.angle);
+      if (e.type === "truck") drawCar(e.x, e.y, e.width, e.height, "#666", "#222", e.angle);
+      if (e.type === "police") drawCar(e.x, e.y, e.width, e.height, "#0c0c0c", "#222", e.angle, "POLICE", true);
+    });
+  }
+
+  function updatePlayer() {
+    if (!running) return;
+
+    if (holdingLeft) player.targetX -= 7;
+    if (holdingRight) player.targetX += 7;
+
+    const minX = 20;
+    const maxX = w - player.width - 20;
+
+    if (player.targetX < minX) player.targetX = minX;
+    if (player.targetX > maxX) player.targetX = maxX;
+
+    player.x += (player.targetX - player.x) * 0.25;
+
+    if (!crashed) {
+      player.angle = (player.targetX - player.x) * 0.003;
+    } else {
+      player.angle += player.spinVel * timeScale;
+      player.spinVel *= 0.98;
+    }
+  }
+
+  function updateEnemies() {
+    enemies.forEach((e, idx) => {
+      if (!e.crashed) {
+        e.y += (speed + 1.2) * timeScale;
+        e.x += e.vx * timeScale;
+
+        if (e.x < 20) e.x = 20;
+        if (e.x > w - e.width - 20) e.x = w - e.width - 20;
+      } else {
+        e.y += (speed + 2.5) * timeScale;
+        e.x += e.vx * 4 * timeScale;
+        e.angle += e.spinVel * timeScale;
+        e.spinVel *= 0.98;
+      }
+
+      if (e.y > h + 300) {
+        enemies.splice(idx, 1);
         score += 10;
         scoreEl.textContent = score;
       }
 
-      if (!crashed && isColliding(car, enemy)) {
-        crashExplosion(enemy);
+      if (!crashed && checkCollision(player, e)) {
+        crash(e);
       }
     });
   }
 
-  function isColliding(a, b) {
-    const rectA = a.getBoundingClientRect();
-    const rectB = b.getBoundingClientRect();
-
+  function checkCollision(a, b) {
     return !(
-      rectA.top > rectB.bottom ||
-      rectA.bottom < rectB.top ||
-      rectA.right < rectB.left ||
-      rectA.left > rectB.right
+      a.x > b.x + b.width ||
+      a.x + a.width < b.x ||
+      a.y > b.y + b.height ||
+      a.y + a.height < b.y
     );
   }
 
-  function moveCarSmooth() {
-    if (!gameRunning) return;
-
-    if (holdingLeft) targetX -= carMoveSpeed;
-    if (holdingRight) targetX += carMoveSpeed;
-
-    const minX = 20;
-    const maxX = game.clientWidth - 82;
-
-    if (targetX < minX) targetX = minX;
-    if (targetX > maxX) targetX = maxX;
-
-    carX += (targetX - carX) * 0.25;
-    car.style.left = carX + "px";
-  }
-
-  function spawnExplosion(x, y) {
-    const boom = document.createElement("div");
-    boom.classList.add("explosion");
-    boom.style.left = (x - 10) + "px";
-    boom.style.top = (y - 10) + "px";
-    game.appendChild(boom);
-    setTimeout(() => boom.remove(), 1900);
-  }
-
-  function spawnSmoke(x, y) {
-    for (let i = 0; i < 6; i++) {
-      const smoke = document.createElement("div");
-      smoke.classList.add("smoke");
-      smoke.style.left = (x + (Math.random() * 50 - 25)) + "px";
-      smoke.style.top = (y + (Math.random() * 50 - 25)) + "px";
-      game.appendChild(smoke);
-      setTimeout(() => smoke.remove(), 3600);
-    }
-  }
-
-  function spawnParticles(x, y) {
-    for (let i = 0; i < 22; i++) {
-      const p = document.createElement("div");
-      p.classList.add("particle");
-
-      const dx = (Math.random() * 420 - 210) + "px";
-      const dy = (Math.random() * 420 - 210) + "px";
-
-      p.style.left = x + "px";
-      p.style.top = y + "px";
-
-      p.style.setProperty("--dx", dx);
-      p.style.setProperty("--dy", dy);
-
-      const colors = ["orange", "yellow", "red", "#ff6600", "#ffaa00", "#ffffff"];
-      p.style.background = colors[Math.floor(Math.random() * colors.length)];
-
-      game.appendChild(p);
-      setTimeout(() => p.remove(), 1500);
-    }
-  }
-
-  function crashExplosion(enemyHit) {
+  function crash(enemy) {
     crashed = true;
     timeScale = 0.12;
 
-    flash.style.opacity = "1";
-    setTimeout(() => flash.style.opacity = "0", 250);
+    player.spinVel = 0.35;
 
-    game.classList.add("shake");
-    setTimeout(() => game.classList.remove("shake"), 1200);
+    enemy.crashed = true;
+    enemy.spinVel = rand(0.25, 0.45);
+    enemy.vx = rand(-2.5, 2.5);
 
-    car.classList.add("crashed");
-
-    if (enemyHit) {
-      enemyHit.classList.add("enemy-crashed");
-      setTimeout(() => {
-        if (enemyHit.parentNode) enemyHit.remove();
-      }, 2300);
-    }
-
-    const carRect = car.getBoundingClientRect();
-    const gameRect = game.getBoundingClientRect();
-
-    const centerX = carRect.left - gameRect.left + carRect.width / 2;
-    const centerY = carRect.top - gameRect.top + carRect.height / 2;
-
-    spawnExplosion(centerX, centerY);
-    spawnParticles(centerX, centerY);
-    spawnSmoke(centerX, centerY);
+    spawnExplosion(player.x + player.width/2, player.y + player.height/2);
+    spawnParticles(player.x + player.width/2, player.y + player.height/2);
+    spawnSmoke(player.x + player.width/2, player.y + player.height/2);
 
     setTimeout(() => {
       timeScale = 0;
@@ -826,79 +443,136 @@
     }, 5000);
   }
 
-  function gameLoop() {
-    if (!gameRunning) return;
+  function spawnExplosion(x, y) {
+    particles.push({
+      x, y,
+      life: 60,
+      size: 1
+    });
+  }
 
-    frame++;
-
-    moveCarSmooth();
-    moveLaneLines();
-    moveEnemies();
-
-    if (!crashed && frame % 65 === 0) {
-      createEnemy();
+  function spawnParticles(x, y) {
+    for (let i = 0; i < 26; i++) {
+      particles.push({
+        x,
+        y,
+        vx: rand(-8, 8),
+        vy: rand(-8, 8),
+        life: rand(25, 45),
+        color: ["orange", "yellow", "red", "#ff6600", "#ffaa00", "#fff"][Math.floor(Math.random()*6)]
+      });
     }
+  }
 
-    if (frame % 280 === 0 && !crashed) {
-      speed += 0.45;
-      speedEl.textContent = (speed / 4).toFixed(1);
+  function spawnSmoke(x, y) {
+    for (let i = 0; i < 6; i++) {
+      smokes.push({
+        x: x + rand(-25, 25),
+        y: y + rand(-25, 25),
+        vy: rand(-1.2, -2.5),
+        life: rand(80, 130),
+        size: rand(20, 40)
+      });
     }
+  }
 
-    if (speed > 6.2) {
-      game.classList.add("fast");
-      game.classList.add("speedZoom");
-    } else {
-      game.classList.remove("fast");
-      game.classList.remove("speedZoom");
-    }
+  function drawParticles() {
+    particles.forEach(p => {
+      if (p.size) {
+        // explosion ring
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(255,140,0,0.25)";
+        ctx.arc(p.x, p.y, p.size * 14, 0, Math.PI*2);
+        ctx.fill();
 
-    requestAnimationFrame(gameLoop);
+        ctx.beginPath();
+        ctx.fillStyle = "rgba(255,255,0,0.35)";
+        ctx.arc(p.x, p.y, p.size * 8, 0, Math.PI*2);
+        ctx.fill();
+
+        p.size += 0.55 * timeScale;
+      } else {
+        // spark
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(p.life / 45, 0);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    });
+  }
+
+  function updateParticles() {
+    particles.forEach((p, idx) => {
+      p.life -= 1 * timeScale;
+
+      if (!p.size) {
+        p.x += p.vx * timeScale;
+        p.y += p.vy * timeScale;
+        p.vx *= 0.97;
+        p.vy *= 0.97;
+      }
+
+      if (p.life <= 0) particles.splice(idx, 1);
+    });
+
+    smokes.forEach((s, idx) => {
+      s.life -= 1 * timeScale;
+      s.y += s.vy * timeScale;
+      s.size += 0.2 * timeScale;
+
+      if (s.life <= 0) smokes.splice(idx, 1);
+    });
+  }
+
+  function drawSmoke() {
+    smokes.forEach(s => {
+      ctx.globalAlpha = Math.max(s.life / 130, 0) * 0.6;
+      ctx.fillStyle = "rgba(120,120,120,0.8)";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
   }
 
   function endGame() {
-    gameRunning = false;
+    running = false;
     finalScoreEl.textContent = score;
     gameOverScreen.style.display = "flex";
   }
 
   function restartGame() {
-    enemies.forEach(e => e.remove());
-    enemies = [];
-
     score = 0;
-    speed = 4;
+    speed = 5;
     frame = 0;
-
+    running = true;
     crashed = false;
     timeScale = 1;
 
+    enemies = [];
+    particles = [];
+    smokes = [];
+
     scoreEl.textContent = score;
     speedEl.textContent = "1";
+
+    player.x = w / 2;
+    player.targetX = w / 2;
+    player.angle = 0;
+    player.spinVel = 0;
+
     gameOverScreen.style.display = "none";
-
-    holdingLeft = false;
-    holdingRight = false;
-
-    car.classList.remove("crashed");
-
-    carX = game.clientWidth / 2 - 31;
-    targetX = carX;
-    car.style.left = carX + "px";
-
-    gameRunning = true;
-    requestAnimationFrame(gameLoop);
   }
 
-  leftBtn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    holdingLeft = true;
-  });
+  window.restartGame = restartGame;
+
+  // CONTROLS
+  leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
   leftBtn.addEventListener("touchend", () => holdingLeft = false);
 
-  rightBtn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    holdingRight = true;
-  });
+  rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingRight = true; });
   rightBtn.addEventListener("touchend", () => holdingRight = false);
 
   document.addEventListener("keydown", (e) => {
@@ -911,21 +585,34 @@
     if (e.key === "ArrowRight") holdingRight = false;
   });
 
-  createLaneLines();
+  // MAIN LOOP
+  function loop() {
+    if (running) {
+      frame++;
 
-  setTimeout(() => {
-    carX = game.clientWidth / 2 - 31;
-    targetX = carX;
-    car.style.left = carX + "px";
-  }, 50);
+      updateRoad();
+      updatePlayer();
+      updateEnemies();
+      updateParticles();
 
-  window.addEventListener("resize", () => {
-    carX = game.clientWidth / 2 - 31;
-    targetX = carX;
-    car.style.left = carX + "px";
-  });
+      if (!crashed && frame % 70 === 0) spawnEnemy();
 
-  requestAnimationFrame(gameLoop);
+      if (!crashed && frame % 260 === 0) {
+        speed += 0.45;
+        speedEl.textContent = (speed / 5).toFixed(1);
+      }
+    }
+
+    drawRoad();
+    drawSmoke();
+    drawEnemies();
+    drawPlayer();
+    drawParticles();
+
+    requestAnimationFrame(loop);
+  }
+
+  loop();
 </script>
 
 </body>
