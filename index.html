@@ -21,11 +21,42 @@
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: bold;
       padding: 10px 14px;
       box-sizing: border-box;
       opacity: 0.95;
+      gap: 10px;
+      align-items: center;
+    }
+
+    #hudLeft, #hudRight {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #nitroBarWrap {
+      width: 140px;
+      height: 12px;
+      border: 2px solid gold;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(0,0,0,0.6);
+      box-shadow: 0 0 10px rgba(255,215,0,0.2);
+    }
+
+    #nitroBar {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #00b7ff, #00fff2, #ffffff);
+      transition: width 0.1s linear;
+    }
+
+    #shieldStatus {
+      font-size: 13px;
+      color: #66ccff;
+      text-shadow: 0 0 10px rgba(0,200,255,0.4);
     }
 
     #wrap {
@@ -256,8 +287,15 @@
 <body>
 
 <div id="hud">
-  <div>Skóre: <span id="score">0</span></div>
-  <div>Rychlost: <span id="speed">1</span>x</div>
+  <div id="hudLeft">
+    <div>Skóre: <span id="score">0</span></div>
+    <div id="shieldStatus">🛡️ Shield: OFF</div>
+  </div>
+
+  <div id="hudRight">
+    <div>Rychlost: <span id="speed">1</span>x</div>
+    <div id="nitroBarWrap"><div id="nitroBar"></div></div>
+  </div>
 </div>
 
 <div id="wrap">
@@ -290,6 +328,9 @@
 
   const scoreEl = document.getElementById("score");
   const speedEl = document.getElementById("speed");
+  const nitroBar = document.getElementById("nitroBar");
+  const shieldStatus = document.getElementById("shieldStatus");
+
   const gameOverScreen = document.getElementById("gameOver");
   const finalScoreEl = document.getElementById("finalScore");
 
@@ -328,10 +369,18 @@
 
   let camShake = 0;
 
-  // NITRO
+  // SHIELD
+  let shieldActive = false;
+
+  // NITRO SYSTEM
   let nitroActive = false;
   let nitroTime = 0;
   let nitroCooldown = 0;
+
+  const NITRO_MAX = 120;
+
+  // POWERUPS
+  let powerUps = [];
 
   const player = {
     x: 0,
@@ -387,6 +436,113 @@
       spinVel: 0,
       vx: rand(-1.2, 1.2)
     });
+  }
+
+  // POWERUP SPAWN
+  function spawnPowerUp() {
+    const types = ["nitro", "shield", "coin"];
+    const type = types[Math.floor(Math.random() * types.length)];
+
+    powerUps.push({
+      type,
+      x: rand(40, w - 80),
+      y: -120,
+      size: 34,
+      life: 900
+    });
+  }
+
+  function updatePowerUps() {
+    powerUps.forEach((p, idx) => {
+      p.y += (speed + 1.2) * timeScale;
+      p.life -= 1 * timeScale;
+
+      if (p.life <= 0 || p.y > h + 100) {
+        powerUps.splice(idx, 1);
+        return;
+      }
+
+      // pickup collision
+      if (!crashed && checkCircleRectCollision(p, player)) {
+        activatePowerUp(p.type);
+        powerUps.splice(idx, 1);
+      }
+    });
+  }
+
+  function drawPowerUps() {
+    powerUps.forEach(p => {
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+
+      // pulsing glow
+      const pulse = 0.5 + Math.sin(frame * 0.15) * 0.25;
+
+      let color = "white";
+      let label = "?";
+
+      if (p.type === "nitro") { color = "#00ccff"; label = "⚡"; }
+      if (p.type === "shield") { color = "#66ccff"; label = "🛡️"; }
+      if (p.type === "coin") { color = "#ffd500"; label = "💰"; }
+
+      ctx.globalAlpha = 0.25 + pulse;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "rgba(0,0,0,0.85)";
+      ctx.beginPath();
+      ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = "bold 22px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "white";
+      ctx.fillText(label, p.x + p.size/2, p.y + p.size/2);
+
+      ctx.restore();
+    });
+  }
+
+  function activatePowerUp(type) {
+    if (type === "coin") {
+      score += 150;
+      scoreEl.textContent = score;
+    }
+
+    if (type === "shield") {
+      shieldActive = true;
+      shieldStatus.textContent = "🛡️ Shield: ON";
+    }
+
+    if (type === "nitro") {
+      nitroCooldown = 0;
+      nitroTime = NITRO_MAX;
+      nitroActive = true;
+      canvas.classList.add("nitroZoom");
+      camShake = 10;
+    }
+  }
+
+  function checkCircleRectCollision(circle, rect) {
+    const cx = circle.x + circle.size/2;
+    const cy = circle.y + circle.size/2;
+
+    const rx = rect.x;
+    const ry = rect.y;
+    const rw = rect.width;
+    const rh = rect.height;
+
+    const closestX = Math.max(rx, Math.min(cx, rx + rw));
+    const closestY = Math.max(ry, Math.min(cy, ry + rh));
+
+    const dx = cx - closestX;
+    const dy = cy - closestY;
+
+    return (dx*dx + dy*dy) < (circle.size/2)*(circle.size/2);
   }
 
   function updateRoad() {
@@ -522,7 +678,7 @@
       speedLines.push({
         x: rand(0, w),
         y: rand(0, h),
-        len: rand(40, 140),
+        len: rand(40, 150),
         life: rand(18, 34),
         width: rand(1, 3)
       });
@@ -548,6 +704,55 @@
       ctx.stroke();
       ctx.globalAlpha = 1;
     });
+  }
+
+  function drawNitroFlames() {
+    if (!nitroActive || crashed) return;
+
+    const px = player.x + player.width/2;
+    const py = player.y + player.height;
+
+    for (let i = 0; i < 3; i++) {
+      const fx = px + rand(-12, 12);
+      const fy = py + rand(0, 14);
+
+      const g = ctx.createRadialGradient(fx, fy, 4, fx, fy, 40);
+      g.addColorStop(0, "rgba(255,255,255,1)");
+      g.addColorStop(0.25, "rgba(0,255,255,0.95)");
+      g.addColorStop(0.6, "rgba(0,120,255,0.75)");
+      g.addColorStop(1, "rgba(0,0,255,0)");
+
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(fx, fy, 40, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawShieldEffect() {
+    if (!shieldActive || crashed) return;
+
+    const cx = player.x + player.width/2;
+    const cy = player.y + player.height/2;
+
+    const pulse = 0.6 + Math.sin(frame * 0.2) * 0.25;
+
+    ctx.save();
+    ctx.globalAlpha = 0.25 + pulse * 0.2;
+    ctx.strokeStyle = "rgba(100,220,255,1)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, player.width * 0.75, player.height * 0.65, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = "rgba(0,200,255,0.8)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, player.width * 0.85, player.height * 0.75, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function drawCarModel(x, y, width, height, topColor, bottomColor, angle, label, siren) {
@@ -578,7 +783,6 @@
     ctx.closePath();
     ctx.fill();
 
-    // okna
     ctx.fillStyle = "rgba(20,20,20,0.85)";
     ctx.beginPath();
     ctx.moveTo(-topW/2 + 8, -height/2 + 14);
@@ -588,7 +792,6 @@
     ctx.closePath();
     ctx.fill();
 
-    // zadní okno
     ctx.globalAlpha = 0.7;
     ctx.fillStyle = "rgba(15,15,15,0.85)";
     ctx.beginPath();
@@ -600,8 +803,8 @@
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // SMART SPEED WHEELS
-    const blinkRate = Math.max(5, Math.floor(22 - (speed * 1.2)));
+    // WHEELS
+    const blinkRate = Math.max(6, Math.floor(26 - (speed * 1.25)));
     const blinkWheel = (frame % blinkRate < blinkRate / 2);
 
     ctx.fillStyle = blinkWheel ? "#000000" : "#222222";
@@ -611,21 +814,18 @@
     ctx.fillRect(-bottomW/2 - 2, height/2 - 46, 10, 18);
     ctx.fillRect(bottomW/2 - 8, height/2 - 46, 10, 18);
 
-    // při vysoké rychlosti highlight jako blur pruh
     const fastSpin = speed > 9;
 
     if (fastSpin) {
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = "rgba(255,255,255,0.9)";
-
       ctx.fillRect(-bottomW/2 - 1, -height/2 + 32, 9, 3);
       ctx.fillRect(bottomW/2 - 7, -height/2 + 32, 9, 3);
       ctx.fillRect(-bottomW/2 - 1, height/2 - 40, 9, 3);
       ctx.fillRect(bottomW/2 - 7, height/2 - 40, 9, 3);
-
       ctx.globalAlpha = 1;
     } else {
-      ctx.globalAlpha = blinkWheel ? 0.12 : 0.30;
+      ctx.globalAlpha = blinkWheel ? 0.10 : 0.22;
       ctx.fillStyle = "white";
 
       ctx.fillRect(-bottomW/2, -height/2 + 30, 3, 14);
@@ -636,7 +836,7 @@
       ctx.globalAlpha = 1;
     }
 
-    // světla
+    // lights
     ctx.fillStyle = "rgba(255,255,200,0.9)";
     ctx.fillRect(-topW/2 + 6, -height/2 + 2, 12, 6);
     ctx.fillRect(topW/2 - 18, -height/2 + 2, 12, 6);
@@ -645,7 +845,6 @@
     ctx.fillRect(-bottomW/2 + 6, height/2 - 8, 14, 6);
     ctx.fillRect(bottomW/2 - 20, height/2 - 8, 14, 6);
 
-    // siréna
     if (siren) {
       const blink = (frame % 4 < 2);
 
@@ -719,8 +918,7 @@
 
     if (!crashed) {
       let dustPower = 0.8 + driftStrength;
-
-      if (nitroActive) dustPower *= 2.2;
+      if (nitroActive) dustPower *= 2.4;
 
       if (frame % 3 === 0) {
         spawnTireDust(player.x + 8, player.y + player.height - 20, dustPower);
@@ -881,6 +1079,16 @@
   }
 
   function crash(enemy) {
+    if (shieldActive) {
+      shieldActive = false;
+      shieldStatus.textContent = "🛡️ Shield: OFF";
+      camShake = 18;
+
+      spawnSparks(player.x + player.width/2, player.y + player.height/2);
+      spawnSmoke(player.x + player.width/2, player.y + player.height/2);
+      return;
+    }
+
     crashed = true;
     timeScale = 0.07;
     player.spinVel = 0.38;
@@ -924,6 +1132,9 @@
     nitroTime = 0;
     nitroCooldown = 0;
 
+    shieldActive = false;
+    shieldStatus.textContent = "🛡️ Shield: OFF";
+
     enemies = [];
     sparks = [];
     smokes = [];
@@ -931,6 +1142,7 @@
     tireDust = [];
     skidMarks = [];
     speedLines = [];
+    powerUps = [];
 
     scoreEl.textContent = score;
     speedEl.textContent = "1";
@@ -965,7 +1177,7 @@
     if (nitroActive) return;
 
     nitroActive = true;
-    nitroTime = 120; 
+    nitroTime = NITRO_MAX;
     nitroCooldown = 240;
 
     canvas.classList.add("nitroZoom");
@@ -996,14 +1208,10 @@
     } else {
       speed = baseSpeed;
     }
-  }
 
-  function updateSpeedLines() {
-    speedLines.forEach((s, idx) => {
-      s.life -= 1 * timeScale;
-      s.y += speed * 2.8 * timeScale;
-      if (s.life <= 0) speedLines.splice(idx, 1);
-    });
+    // HUD nitro bar
+    const pct = Math.max(0, nitroTime / NITRO_MAX);
+    nitroBar.style.width = (pct * 100) + "%";
   }
 
   function loop() {
@@ -1015,6 +1223,7 @@
       updateRoad();
       updatePlayer();
       updateEnemies();
+      updatePowerUps();
 
       updateExplosions();
       updateSparks();
@@ -1024,6 +1233,8 @@
       updateSpeedLines();
 
       if (!crashed && frame % 70 === 0) spawnEnemy();
+
+      if (!crashed && frame % 300 === 0) spawnPowerUp();
 
       if (!crashed && frame % 260 === 0) {
         baseSpeed += 0.45;
@@ -1041,8 +1252,11 @@
       drawRoadTexture();
       drawSkidMarks();
       drawTireDust();
+      drawPowerUps();
       drawEnemies();
+      drawNitroFlames();
       drawPlayer();
+      drawShieldEffect();
       drawSmoke();
       drawExplosions();
       drawSparks();
@@ -1053,8 +1267,11 @@
       drawRoadTexture();
       drawSkidMarks();
       drawTireDust();
+      drawPowerUps();
       drawEnemies();
+      drawNitroFlames();
       drawPlayer();
+      drawShieldEffect();
       drawSmoke();
       drawExplosions();
       drawSparks();
