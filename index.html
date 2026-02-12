@@ -43,6 +43,12 @@
       background: linear-gradient(#1a1a1a, #0b0b0b);
       display: block;
       box-shadow: 0 0 20px rgba(255,255,255,0.08);
+      transform-origin: center;
+      transition: transform 0.55s ease;
+    }
+
+    canvas.zoom {
+      transform: scale(1.08);
     }
 
     #controls {
@@ -88,6 +94,122 @@
       filter: brightness(1.2);
     }
 
+    /* START SCREEN */
+    #startScreen {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.95);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+      z-index: 999;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    #introText {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #ffd500;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: introFade 1.5s ease forwards;
+    }
+
+    #mainLogo {
+      font-size: 58px;
+      margin: 12px 0 0 0;
+      color: gold;
+      letter-spacing: 8px;
+      text-shadow: 0 0 25px rgba(255,215,0,0.35);
+      opacity: 0;
+      transform: scale(0.8);
+      animation: logoPop 1.8s ease forwards;
+      animation-delay: 1.2s;
+    }
+
+    #subText {
+      margin-top: 10px;
+      font-size: 14px;
+      opacity: 0;
+      animation: subFade 1.4s ease forwards;
+      animation-delay: 2.5s;
+    }
+
+    #startBtn {
+      margin-top: 26px;
+      padding: 16px 32px;
+      border: none;
+      border-radius: 14px;
+      font-size: 20px;
+      cursor: pointer;
+      background: repeating-linear-gradient(
+        45deg,
+        #ffd500,
+        #ffd500 12px,
+        #111 12px,
+        #111 24px
+      );
+      color: black;
+      font-weight: 900;
+      box-shadow: 0 0 20px rgba(255,215,0,0.25);
+      opacity: 0;
+      pointer-events: none;
+      animation: btnShow 1.2s ease forwards;
+      animation-delay: 3.6s;
+    }
+
+    #startBtn:active {
+      transform: scale(0.96);
+      filter: brightness(1.2);
+    }
+
+    /* intro flash */
+    #introFlash {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.95);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    .flashAnim {
+      animation: flashBang 0.4s ease forwards;
+      animation-delay: 2.1s;
+    }
+
+    @keyframes flashBang {
+      0% { opacity: 0; }
+      30% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes introFade {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0px); }
+    }
+
+    @keyframes logoPop {
+      0% { opacity: 0; transform: scale(0.75); }
+      60% { opacity: 1; transform: scale(1.08); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes subFade {
+      0% { opacity: 0; }
+      100% { opacity: 0.85; }
+    }
+
+    @keyframes btnShow {
+      0% { opacity: 0; transform: translateY(15px); }
+      100% { opacity: 1; transform: translateY(0px); pointer-events: auto; }
+    }
+
+    /* GAME OVER */
     #gameOver {
       position: absolute;
       inset: 0;
@@ -136,6 +258,16 @@
 <div id="wrap">
   <canvas id="game"></canvas>
 
+  <div id="startScreen">
+    <div id="introFlash" class="flashAnim"></div>
+
+    <div id="introText">DANIEL_SDILI UVÁDÍ:</div>
+    <div id="mainLogo">ROADSTER</div>
+    <div id="subText">Burnout Canvas Edition</div>
+
+    <button id="startBtn">START</button>
+  </div>
+
   <div id="gameOver">
     <h1>CRASHED!</h1>
     <p>Tvoje skóre: <span id="finalScore">0</span></p>
@@ -154,8 +286,12 @@
 
   const scoreEl = document.getElementById("score");
   const speedEl = document.getElementById("speed");
+
   const gameOverScreen = document.getElementById("gameOver");
   const finalScoreEl = document.getElementById("finalScore");
+
+  const startScreen = document.getElementById("startScreen");
+  const startBtn = document.getElementById("startBtn");
 
   const leftBtn = document.getElementById("leftBtn");
   const rightBtn = document.getElementById("rightBtn");
@@ -177,27 +313,35 @@
   let score = 0;
   let speed = 5;
   let frame = 0;
-  let running = true;
+
+  let running = false;
   let crashed = false;
   let timeScale = 1;
 
   let holdingLeft = false;
   let holdingRight = false;
 
+  // CAMERA FX
+  let camShake = 0;
+
   const player = {
-    x: w / 2,
-    y: h - 140,
+    x: 0,
+    y: 0,
     width: 62,
     height: 118,
-    targetX: w / 2,
+    targetX: 0,
     angle: 0,
     spinVel: 0
   };
 
   let laneLines = [];
-  for (let i = 0; i < 12; i++) {
-    laneLines.push({ x: w/2, y: i * 90 });
+  function resetRoad() {
+    laneLines = [];
+    for (let i = 0; i < 12; i++) {
+      laneLines.push({ x: w/2, y: i * 90 });
+    }
   }
+  resetRoad();
 
   let enemies = [];
   let sparks = [];
@@ -249,14 +393,12 @@
   }
 
   function drawRoadTexture() {
-    // base asphalt
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, "#1a1a1a");
     grad.addColorStop(1, "#0b0b0b");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // dark asphalt stripes
     ctx.globalAlpha = 0.22;
     for (let i = 0; i < 10; i++) {
       ctx.fillStyle = "rgba(0,0,0,0.7)";
@@ -264,15 +406,13 @@
     }
     ctx.globalAlpha = 1;
 
-    // grain noise
     ctx.globalAlpha = 0.10;
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 180; i++) {
       ctx.fillStyle = (Math.random() > 0.5) ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)";
       ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
     }
     ctx.globalAlpha = 1;
 
-    // skid marks
     ctx.globalAlpha = 0.22;
     ctx.fillStyle = "rgba(0,0,0,0.7)";
     for (let i = 0; i < 5; i++) {
@@ -281,18 +421,15 @@
     }
     ctx.globalAlpha = 1;
 
-    // yellow edges
     ctx.fillStyle = "rgba(255,215,0,0.35)";
     ctx.fillRect(0, 0, 10, h);
     ctx.fillRect(w - 10, 0, 10, h);
 
-    // reflections
     ctx.globalAlpha = 0.08;
     ctx.fillStyle = "rgba(255,255,255,1)";
     ctx.fillRect(0, (frame * 3) % h - 100, w, 140);
     ctx.globalAlpha = 1;
 
-    // lane lines
     laneLines.forEach(line => {
       ctx.fillStyle = "rgba(255,255,255,0.55)";
       ctx.fillRect(line.x - 5, line.y, 10, 80);
@@ -300,28 +437,28 @@
   }
 
   function drawPoliceLightCone(x, y, width, height) {
-    const blink = (frame % 8 < 4);
+    const blink = (frame % 6 < 3); // 2x faster blink
 
     ctx.save();
-    ctx.globalAlpha = blink ? 0.6 : 0.45;
+    ctx.globalAlpha = blink ? 0.7 : 0.5;
 
     const coneGrad = ctx.createRadialGradient(
       x + width/2, y + 20, 10,
-      x + width/2, y + 140, 170
+      x + width/2, y + 140, 180
     );
 
     if (blink) {
-      coneGrad.addColorStop(0, "rgba(0,150,255,0.75)");
-      coneGrad.addColorStop(0.45, "rgba(0,150,255,0.22)");
+      coneGrad.addColorStop(0, "rgba(0,150,255,0.85)");
+      coneGrad.addColorStop(0.45, "rgba(0,150,255,0.25)");
       coneGrad.addColorStop(1, "rgba(0,150,255,0)");
     } else {
-      coneGrad.addColorStop(0, "rgba(255,0,0,0.7)");
-      coneGrad.addColorStop(0.45, "rgba(255,0,0,0.22)");
+      coneGrad.addColorStop(0, "rgba(255,0,0,0.85)");
+      coneGrad.addColorStop(0.45, "rgba(255,0,0,0.25)");
       coneGrad.addColorStop(1, "rgba(255,0,0,0)");
     }
 
     ctx.fillStyle = coneGrad;
-    roundRect(x - 55, y + 10, width + 110, height + 220, 110, true);
+    roundRect(x - 60, y + 10, width + 120, height + 260, 120, true);
 
     ctx.restore();
   }
@@ -364,13 +501,14 @@
     }
 
     if (siren) {
-      const blink = (frame % 8 < 4);
+      const blink = (frame % 6 < 3);
+
       ctx.fillStyle = blink ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
       roundRect(-18, -height/2 + 4, 36, 10, 6, true);
 
-      ctx.globalAlpha = blink ? 0.35 : 0.32;
+      ctx.globalAlpha = blink ? 0.45 : 0.4;
       ctx.fillStyle = blink ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
-      roundRect(-65, -height/2 + 0, 130, 34, 20, true);
+      roundRect(-70, -height/2 + 0, 140, 36, 20, true);
       ctx.globalAlpha = 1;
     }
 
@@ -450,37 +588,31 @@
     );
   }
 
-  // EXPLOSION + SPARKS
   function spawnExplosion(x, y) {
-    explosions.push({
-      x, y,
-      radius: 10,
-      life: 50
-    });
+    explosions.push({ x, y, radius: 10, life: 55 });
   }
 
   function spawnSparks(x, y) {
-    for (let i = 0; i < 42; i++) {
+    for (let i = 0; i < 55; i++) {
       sparks.push({
-        x,
-        y,
-        vx: rand(-16, 16),   // HALF SCREEN CRAZY
-        vy: rand(-18, 18),
-        life: rand(35, 70),
-        size: rand(3, 7),
+        x, y,
+        vx: rand(-22, 22),
+        vy: rand(-24, 24),
+        life: rand(45, 95),
+        size: rand(4, 10),
         color: ["orange", "yellow", "#ff6600", "#ffaa00", "#ffffff"][Math.floor(Math.random()*5)]
       });
     }
   }
 
   function spawnSmoke(x, y) {
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 12; i++) {
       smokes.push({
-        x: x + rand(-30, 30),
-        y: y + rand(-30, 30),
-        vy: rand(-1.2, -3.0),
-        life: rand(100, 170),
-        size: rand(25, 50)
+        x: x + rand(-35, 35),
+        y: y + rand(-35, 35),
+        vy: rand(-1.2, -3.2),
+        life: rand(120, 200),
+        size: rand(30, 65)
       });
     }
   }
@@ -489,24 +621,22 @@
     explosions.forEach(ex => {
       ctx.save();
 
-      // shockwave ring
-      ctx.globalAlpha = Math.max(ex.life / 50, 0) * 0.6;
+      ctx.globalAlpha = Math.max(ex.life / 55, 0) * 0.75;
       ctx.strokeStyle = "rgba(255,220,120,0.9)";
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.arc(ex.x, ex.y, ex.radius * 2.2, 0, Math.PI * 2);
+      ctx.arc(ex.x, ex.y, ex.radius * 2.7, 0, Math.PI * 2);
       ctx.stroke();
 
-      // fireball core
-      const g = ctx.createRadialGradient(ex.x, ex.y, 5, ex.x, ex.y, ex.radius * 3.5);
-      g.addColorStop(0, "rgba(255,255,200,1)");
-      g.addColorStop(0.3, "rgba(255,180,0,0.95)");
-      g.addColorStop(0.7, "rgba(255,50,0,0.65)");
+      const g = ctx.createRadialGradient(ex.x, ex.y, 5, ex.x, ex.y, ex.radius * 5);
+      g.addColorStop(0, "rgba(255,255,230,1)");
+      g.addColorStop(0.3, "rgba(255,200,0,0.95)");
+      g.addColorStop(0.65, "rgba(255,50,0,0.7)");
       g.addColorStop(1, "rgba(255,0,0,0)");
 
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(ex.x, ex.y, ex.radius * 3.5, 0, Math.PI * 2);
+      ctx.arc(ex.x, ex.y, ex.radius * 5, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.restore();
@@ -516,28 +646,26 @@
   function updateExplosions() {
     explosions.forEach((ex, idx) => {
       ex.life -= 1 * timeScale;
-      ex.radius += 1.2 * timeScale;
-
+      ex.radius += 1.5 * timeScale;
       if (ex.life <= 0) explosions.splice(idx, 1);
     });
   }
 
   function drawSparks() {
     sparks.forEach(s => {
-      ctx.globalAlpha = Math.max(s.life / 70, 0);
+      ctx.globalAlpha = Math.max(s.life / 95, 0);
 
       ctx.fillStyle = s.color;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
       ctx.fill();
 
-      // glow line
-      ctx.globalAlpha *= 0.7;
+      ctx.globalAlpha *= 0.8;
       ctx.strokeStyle = s.color;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x - s.vx * 0.8, s.y - s.vy * 0.8);
+      ctx.lineTo(s.x - s.vx * 1.1, s.y - s.vy * 1.1);
       ctx.stroke();
 
       ctx.globalAlpha = 1;
@@ -547,20 +675,17 @@
   function updateSparks() {
     sparks.forEach((s, idx) => {
       s.life -= 1 * timeScale;
-
       s.x += s.vx * timeScale;
       s.y += s.vy * timeScale;
-
       s.vx *= 0.97;
       s.vy *= 0.97;
-
       if (s.life <= 0) sparks.splice(idx, 1);
     });
   }
 
   function drawSmoke() {
     smokes.forEach(s => {
-      ctx.globalAlpha = Math.max(s.life / 170, 0) * 0.55;
+      ctx.globalAlpha = Math.max(s.life / 200, 0) * 0.6;
       ctx.fillStyle = "rgba(120,120,120,0.9)";
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
@@ -573,7 +698,7 @@
     smokes.forEach((s, idx) => {
       s.life -= 1 * timeScale;
       s.y += s.vy * timeScale;
-      s.size += 0.25 * timeScale;
+      s.size += 0.3 * timeScale;
       if (s.life <= 0) smokes.splice(idx, 1);
     });
   }
@@ -581,8 +706,9 @@
   function crash(enemy) {
     crashed = true;
     timeScale = 0.12;
-
     player.spinVel = 0.35;
+
+    camShake = 18;
 
     enemy.crashed = true;
     enemy.spinVel = rand(0.25, 0.45);
@@ -601,18 +727,6 @@
     }, 5000);
   }
 
-  function updateAllEffects() {
-    updateExplosions();
-    updateSparks();
-    updateSmoke();
-  }
-
-  function drawAllEffects() {
-    drawSmoke();
-    drawExplosions();
-    drawSparks();
-  }
-
   function endGame() {
     running = false;
     finalScoreEl.textContent = score;
@@ -623,7 +737,7 @@
     score = 0;
     speed = 5;
     frame = 0;
-    running = true;
+    running = false;
     crashed = false;
     timeScale = 1;
 
@@ -635,40 +749,49 @@
     scoreEl.textContent = score;
     speedEl.textContent = "1";
 
-    player.x = w / 2;
-    player.targetX = w / 2;
+    player.x = w / 2 - player.width/2;
+    player.targetX = player.x;
+    player.y = h - 140;
     player.angle = 0;
     player.spinVel = 0;
 
     gameOverScreen.style.display = "none";
+    startScreen.style.display = "flex";
   }
 
   window.restartGame = restartGame;
 
-  function loop() {
-    if (running) {
-      frame++;
+  startBtn.addEventListener("click", () => {
+    startScreen.style.display = "none";
 
-      updateRoad();
-      updatePlayer();
-      updateEnemies();
-      updateAllEffects();
+    canvas.classList.add("zoom");
+    camShake = 12;
 
-      if (!crashed && frame % 70 === 0) spawnEnemy();
+    setTimeout(() => {
+      canvas.classList.remove("zoom");
+    }, 600);
 
-      if (!crashed && frame % 260 === 0) {
-        speed += 0.45;
-        speedEl.textContent = (speed / 5).toFixed(1);
-      }
-    }
+    setTimeout(() => {
+      score = 0;
+      speed = 5;
+      frame = 0;
+      crashed = false;
+      timeScale = 1;
 
-    drawRoadTexture();
-    drawEnemies();
-    drawPlayer();
-    drawAllEffects();
+      enemies = [];
+      sparks = [];
+      smokes = [];
+      explosions = [];
 
-    requestAnimationFrame(loop);
-  }
+      resetRoad();
+
+      player.x = w / 2 - player.width/2;
+      player.targetX = player.x;
+      player.y = h - 140;
+
+      running = true;
+    }, 600);
+  });
 
   leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
   leftBtn.addEventListener("touchend", () => holdingLeft = false);
@@ -685,6 +808,52 @@
     if (e.key === "ArrowLeft") holdingLeft = false;
     if (e.key === "ArrowRight") holdingRight = false;
   });
+
+  function loop() {
+    ctx.save();
+
+    // CAMERA SHAKE
+    if (camShake > 0) {
+      const dx = rand(-camShake, camShake) * 0.2;
+      const dy = rand(-camShake, camShake) * 0.2;
+      ctx.translate(dx, dy);
+      camShake *= 0.9;
+    }
+
+    if (running) {
+      frame++;
+
+      updateRoad();
+      updatePlayer();
+      updateEnemies();
+
+      updateExplosions();
+      updateSparks();
+      updateSmoke();
+
+      if (!crashed && frame % 70 === 0) spawnEnemy();
+
+      if (!crashed && frame % 260 === 0) {
+        speed += 0.45;
+        speedEl.textContent = (speed / 5).toFixed(1);
+      }
+    }
+
+    drawRoadTexture();
+    drawEnemies();
+    drawPlayer();
+    drawSmoke();
+    drawExplosions();
+    drawSparks();
+
+    ctx.restore();
+
+    requestAnimationFrame(loop);
+  }
+
+  player.x = w / 2 - player.width/2;
+  player.targetX = player.x;
+  player.y = h - 140;
 
   requestAnimationFrame(loop);
 </script>
