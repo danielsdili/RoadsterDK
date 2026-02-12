@@ -313,9 +313,6 @@
   let holdingRight = false;
 
   let camShake = 0;
-  let wheelSpin = 0;
-
-  let introAlreadyShown = false;
 
   const player = {
     x: 0,
@@ -324,7 +321,8 @@
     height: 118,
     targetX: 0,
     angle: 0,
-    spinVel: 0
+    spinVel: 0,
+    lastX: 0
   };
 
   let laneLines = [];
@@ -340,6 +338,7 @@
   let sparks = [];
   let smokes = [];
   let explosions = [];
+  let tireSmoke = [];
 
   function rand(min, max) {
     return Math.random() * (max - min) + min;
@@ -435,6 +434,39 @@
     ctx.restore();
   }
 
+  // kouř za obdélníkovými koly
+  function spawnTireSmoke(x, y, strength) {
+    tireSmoke.push({
+      x: x + rand(-8, 8),
+      y: y + rand(-5, 5),
+      vx: rand(-0.6, 0.6),
+      vy: rand(1.5, 3.5),
+      life: rand(55, 95) * strength,
+      size: rand(10, 22) * strength
+    });
+  }
+
+  function updateTireSmoke() {
+    tireSmoke.forEach((t, idx) => {
+      t.life -= 1 * timeScale;
+      t.x += t.vx * timeScale;
+      t.y += t.vy * timeScale;
+      t.size += 0.18 * timeScale;
+      if (t.life <= 0) tireSmoke.splice(idx, 1);
+    });
+  }
+
+  function drawTireSmoke() {
+    tireSmoke.forEach(t => {
+      ctx.globalAlpha = Math.max(t.life / 95, 0) * 0.5;
+      ctx.fillStyle = "rgba(200,200,200,0.9)";
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+
   function drawCarModel(x, y, width, height, topColor, bottomColor, angle, label, siren) {
     ctx.save();
     ctx.translate(x + width/2, y + height/2);
@@ -463,17 +495,7 @@
     ctx.closePath();
     ctx.fill();
 
-    ctx.globalAlpha = 0.20;
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.moveTo(-topW/2 + 6, -height/2 + 5);
-    ctx.lineTo(-topW/2 + 18, -height/2 + 5);
-    ctx.lineTo(-bottomW/2 + 30, height/2 - 10);
-    ctx.lineTo(-bottomW/2 + 18, height/2 - 10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
+    // okna
     ctx.fillStyle = "rgba(20,20,20,0.85)";
     ctx.beginPath();
     ctx.moveTo(-topW/2 + 8, -height/2 + 14);
@@ -483,6 +505,7 @@
     ctx.closePath();
     ctx.fill();
 
+    // zadní okno
     ctx.globalAlpha = 0.7;
     ctx.fillStyle = "rgba(15,15,15,0.85)";
     ctx.beginPath();
@@ -494,71 +517,14 @@
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    function wheel(wx, wy) {
-      ctx.save();
-      ctx.translate(wx, wy);
+    // OBDELNIKOVA KOLA (schovaná)
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(-bottomW/2 - 2, -height/2 + 28, 10, 18);
+    ctx.fillRect(bottomW/2 - 8, -height/2 + 28, 10, 18);
+    ctx.fillRect(-bottomW/2 - 2, height/2 - 46, 10, 18);
+    ctx.fillRect(bottomW/2 - 8, height/2 - 46, 10, 18);
 
-      ctx.fillStyle = "#050505";
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 12, 8, 0, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.save();
-      ctx.rotate(wheelSpin);
-
-      ctx.fillStyle = "#777";
-      ctx.beginPath();
-      ctx.arc(0, 0, 5.3, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.globalAlpha = 0.25;
-      ctx.fillStyle = "#000";
-      ctx.beginPath();
-      ctx.arc(1.2, 1.2, 4.6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-
-      ctx.globalAlpha = 0.25;
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.lineWidth = 1.4;
-      for (let i = 0; i < 4; i++) {
-        const a = (Math.PI * 2 / 4) * i;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 1.2, Math.sin(a) * 1.2);
-        ctx.lineTo(Math.cos(a) * 4.8, Math.sin(a) * 4.8);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-
-      ctx.fillStyle = "#333";
-      ctx.beginPath();
-      ctx.arc(0, 0, 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "rgba(255,255,255,0.8)";
-      for (let i = 0; i < 5; i++) {
-        const a = (Math.PI * 2 / 5) * i;
-        ctx.beginPath();
-        ctx.arc(Math.cos(a) * 3.2, Math.sin(a) * 3.2, 0.85, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
-      ctx.restore();
-    }
-
-    // kola posunutá víc pod auto
-    wheel(-bottomW/2 + 2, -height/2 + 34);
-    wheel(bottomW/2 - 2, -height/2 + 34);
-    wheel(-bottomW/2 + 2, height/2 - 34);
-    wheel(bottomW/2 - 2, height/2 - 34);
-
+    // světla
     ctx.fillStyle = "rgba(255,255,200,0.9)";
     ctx.fillRect(-topW/2 + 6, -height/2 + 2, 12, 6);
     ctx.fillRect(topW/2 - 18, -height/2 + 2, 12, 6);
@@ -567,6 +533,7 @@
     ctx.fillRect(-bottomW/2 + 6, height/2 - 8, 14, 6);
     ctx.fillRect(bottomW/2 - 20, height/2 - 8, 14, 6);
 
+    // siréna
     if (siren) {
       const blink = (frame % 4 < 2);
 
@@ -616,6 +583,8 @@
   function updatePlayer() {
     if (!running) return;
 
+    player.lastX = player.x;
+
     if (holdingLeft) player.targetX -= 7;
     if (holdingRight) player.targetX += 7;
 
@@ -632,6 +601,18 @@
     } else {
       player.angle += player.spinVel * timeScale;
       player.spinVel *= 0.985;
+    }
+
+    // drift kouř za obdélníkovými koly
+    const driftStrength = Math.min(Math.abs(player.x - player.lastX) / 4, 2.5);
+
+    if (!crashed) {
+      const smokePower = 0.9 + driftStrength;
+
+      if (frame % 3 === 0) {
+        spawnTireSmoke(player.x + 8, player.y + player.height - 20, smokePower);
+        spawnTireSmoke(player.x + player.width - 8, player.y + player.height - 20, smokePower);
+      }
     }
   }
 
@@ -824,6 +805,7 @@
     sparks = [];
     smokes = [];
     explosions = [];
+    tireSmoke = [];
 
     scoreEl.textContent = score;
     speedEl.textContent = "1";
@@ -835,7 +817,6 @@
     player.spinVel = 0;
 
     gameOverScreen.style.display = "none";
-
     running = true;
   }
 
@@ -843,11 +824,7 @@
 
   startBtn.addEventListener("click", () => {
     startScreen.style.display = "none";
-    introAlreadyShown = true;
-
-    setTimeout(() => {
-      running = true;
-    }, 300);
+    setTimeout(() => { running = true; }, 300);
   });
 
   leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
@@ -856,21 +833,9 @@
   rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingRight = true; });
   rightBtn.addEventListener("touchend", () => holdingRight = false);
 
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowLeft") holdingLeft = true;
-    if (e.key === "ArrowRight") holdingRight = true;
-  });
-
-  document.addEventListener("keyup", (e) => {
-    if (e.key === "ArrowLeft") holdingLeft = false;
-    if (e.key === "ArrowRight") holdingRight = false;
-  });
-
   function loop() {
     if (running) {
       frame++;
-
-      wheelSpin += 0.25 * (speed / 5) * timeScale;
 
       updateRoad();
       updatePlayer();
@@ -879,6 +844,7 @@
       updateExplosions();
       updateSparks();
       updateSmoke();
+      updateTireSmoke();
 
       if (!crashed && frame % 70 === 0) spawnEnemy();
 
@@ -888,7 +854,6 @@
       }
     }
 
-    // SHAKE efekt
     if (camShake > 0) {
       ctx.save();
       const sx = rand(-camShake, camShake);
@@ -897,6 +862,7 @@
       camShake *= 0.92;
 
       drawRoadTexture();
+      drawTireSmoke();
       drawEnemies();
       drawPlayer();
       drawSmoke();
@@ -906,6 +872,7 @@
       ctx.restore();
     } else {
       drawRoadTexture();
+      drawTireSmoke();
       drawEnemies();
       drawPlayer();
       drawSmoke();
