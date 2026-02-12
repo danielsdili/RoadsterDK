@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER RACER - BURNOUT CRASH</title>
+  <title>ROADSTER RACER - CINEMATIC CRASH</title>
 
   <style>
     body {
@@ -41,7 +41,7 @@
       box-shadow: 0 0 20px rgba(255,255,255,0.08);
     }
 
-    /* SHAKE efekt */
+    /* SHAKE */
     .shake {
       animation: shake 0.25s linear infinite;
     }
@@ -70,7 +70,6 @@
       pointer-events: none;
     }
 
-    /* okraje silnice */
     #game::after {
       content: "";
       position: absolute;
@@ -102,21 +101,20 @@
       border: 2px solid rgba(255,255,255,0.18);
       box-shadow: 0 12px 25px rgba(0,0,0,0.55);
       overflow: hidden;
-
       transform-origin: center;
     }
 
-    /* CRASH animace */
+    /* CRASH SPIN */
     .crashed {
-      animation: spinCrash 0.8s ease-out forwards;
+      animation: spinCrash 1.2s ease-out forwards;
       filter: brightness(0.55) contrast(1.2) saturate(0.7);
     }
 
     @keyframes spinCrash {
       0% { transform: rotate(0deg) scale(1); }
-      35% { transform: rotate(240deg) scale(1.05); }
-      70% { transform: rotate(520deg) scale(0.95); }
-      100% { transform: rotate(720deg) scale(0.9); }
+      35% { transform: rotate(280deg) scale(1.1); }
+      70% { transform: rotate(620deg) scale(0.95); }
+      100% { transform: rotate(920deg) scale(0.85); }
     }
 
     #car .hood {
@@ -261,23 +259,6 @@
     .enemy .wheel.right1 { right: -5px; top: 18px; }
     .enemy .wheel.right2 { right: -5px; bottom: 22px; }
 
-    /* EXPLOZE částice */
-    .particle {
-      position: absolute;
-      width: 10px;
-      height: 10px;
-      background: orange;
-      border-radius: 50%;
-      pointer-events: none;
-      box-shadow: 0 0 10px rgba(255,150,0,0.7);
-      animation: particleMove 0.7s ease-out forwards;
-    }
-
-    @keyframes particleMove {
-      0% { transform: scale(1) translate(0,0); opacity: 1; }
-      100% { transform: scale(0.2) translate(var(--dx), var(--dy)); opacity: 0; }
-    }
-
     /* FLASH */
     #flash {
       position: absolute;
@@ -286,7 +267,62 @@
       opacity: 0;
       pointer-events: none;
       z-index: 500;
-      transition: opacity 0.2s;
+      transition: opacity 0.25s;
+    }
+
+    /* EXPLOSION CIRCLE */
+    .explosion {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, yellow, orange, red, transparent);
+      box-shadow: 0 0 40px rgba(255,120,0,0.9);
+      pointer-events: none;
+      z-index: 600;
+      animation: boom 1.2s ease-out forwards;
+    }
+
+    @keyframes boom {
+      0% { transform: scale(0.4); opacity: 1; }
+      60% { transform: scale(5); opacity: 0.8; }
+      100% { transform: scale(7); opacity: 0; }
+    }
+
+    /* SMOKE */
+    .smoke {
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: rgba(120,120,120,0.6);
+      filter: blur(2px);
+      pointer-events: none;
+      z-index: 550;
+      animation: smokeUp 2.4s ease-out forwards;
+    }
+
+    @keyframes smokeUp {
+      0% { transform: scale(0.6) translate(0,0); opacity: 0.8; }
+      100% { transform: scale(2.8) translate(0,-120px); opacity: 0; }
+    }
+
+    /* PARTIKLY */
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: orange;
+      border-radius: 50%;
+      pointer-events: none;
+      box-shadow: 0 0 10px rgba(255,150,0,0.7);
+      animation: particleMove 1.2s ease-out forwards;
+      z-index: 610;
+    }
+
+    @keyframes particleMove {
+      0% { transform: scale(1) translate(0,0); opacity: 1; }
+      100% { transform: scale(0.2) translate(var(--dx), var(--dy)); opacity: 0; }
     }
 
     /* OVLÁDÁNÍ */
@@ -421,7 +457,7 @@
 
   let crashed = false;
 
-  // SMOOTH pixel movement
+  // Smooth movement
   let carX = 0;
   let targetX = 0;
   const carMoveSpeed = 7;
@@ -429,7 +465,7 @@
   let holdingLeft = false;
   let holdingRight = false;
 
-  // SLOWMO faktor
+  // time scale (slowmo)
   let timeScale = 1;
 
   const enemyStyles = [
@@ -532,39 +568,38 @@
     car.style.left = carX + "px";
   }
 
-  function crashExplosion() {
-    crashed = true;
+  function spawnExplosion(x, y) {
+    const boom = document.createElement("div");
+    boom.classList.add("explosion");
+    boom.style.left = (x - 10) + "px";
+    boom.style.top = (y - 10) + "px";
+    game.appendChild(boom);
+    setTimeout(() => boom.remove(), 1300);
+  }
 
-    // SLOWMO
-    timeScale = 0.25;
+  function spawnSmoke(x, y) {
+    for (let i = 0; i < 6; i++) {
+      const smoke = document.createElement("div");
+      smoke.classList.add("smoke");
 
-    // flash
-    flash.style.opacity = "1";
-    setTimeout(() => flash.style.opacity = "0", 160);
+      smoke.style.left = (x + (Math.random() * 30 - 15)) + "px";
+      smoke.style.top = (y + (Math.random() * 30 - 15)) + "px";
 
-    // shake
-    game.classList.add("shake");
-    setTimeout(() => game.classList.remove("shake"), 550);
+      game.appendChild(smoke);
+      setTimeout(() => smoke.remove(), 2500);
+    }
+  }
 
-    // spin car
-    car.classList.add("crashed");
-
-    // particles
-    const carRect = car.getBoundingClientRect();
-    const gameRect = game.getBoundingClientRect();
-
-    const centerX = carRect.left - gameRect.left + carRect.width / 2;
-    const centerY = carRect.top - gameRect.top + carRect.height / 2;
-
-    for (let i = 0; i < 22; i++) {
+  function spawnParticles(x, y) {
+    for (let i = 0; i < 26; i++) {
       const p = document.createElement("div");
       p.classList.add("particle");
 
-      const dx = (Math.random() * 280 - 140) + "px";
-      const dy = (Math.random() * 280 - 140) + "px";
+      const dx = (Math.random() * 320 - 160) + "px";
+      const dy = (Math.random() * 320 - 160) + "px";
 
-      p.style.left = centerX + "px";
-      p.style.top = centerY + "px";
+      p.style.left = x + "px";
+      p.style.top = y + "px";
 
       p.style.setProperty("--dx", dx);
       p.style.setProperty("--dy", dy);
@@ -573,14 +608,43 @@
       p.style.background = colors[Math.floor(Math.random() * colors.length)];
 
       game.appendChild(p);
-      setTimeout(() => p.remove(), 800);
+      setTimeout(() => p.remove(), 1300);
     }
+  }
 
-    // po animaci konec
+  function crashExplosion() {
+    crashed = true;
+
+    // slow motion na 3s crash scény
+    timeScale = 0.2;
+
+    // flash
+    flash.style.opacity = "1";
+    setTimeout(() => flash.style.opacity = "0", 180);
+
+    // shake
+    game.classList.add("shake");
+    setTimeout(() => game.classList.remove("shake"), 700);
+
+    // spin car
+    car.classList.add("crashed");
+
+    const carRect = car.getBoundingClientRect();
+    const gameRect = game.getBoundingClientRect();
+
+    const centerX = carRect.left - gameRect.left + carRect.width / 2;
+    const centerY = carRect.top - gameRect.top + carRect.height / 2;
+
+    // explosion visuals
+    spawnExplosion(centerX, centerY);
+    spawnParticles(centerX, centerY);
+    spawnSmoke(centerX, centerY);
+
+    // po 3 sekundách konec a skóre
     setTimeout(() => {
       timeScale = 0;
       endGame();
-    }, 900);
+    }, 3000);
   }
 
   function gameLoop() {
