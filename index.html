@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <title>ROADSTER RACER ULTRA</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #111, #000);
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      color: white;
+      touch-action: none;
+    }
+
+    #hud {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: bold;
+      padding: 10px 14px;
+      box-sizing: border-box;
+      opacity: 0.95;
+    }
+
+    #game {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 75vh;
+      margin: 0 auto;
+      background: linear-gradient(#1b1b1b, #101010);
+      border: 4px solid #444;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(255,255,255,0.08);
+    }
+
+    /* silnice textura */
+    #game::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.03),
+        rgba(255,255,255,0.03) 2px,
+        transparent 2px,
+        transparent 18px
+      );
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    /* okraje silnice */
+    #game::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-left: 6px solid rgba(255,255,255,0.12);
+      border-right: 6px solid rgba(255,255,255,0.12);
+      pointer-events: none;
+    }
+
+    .lane-line {
+      position: absolute;
+      width: 10px;
+      height: 80px;
+      background: rgba(255,255,255,0.55);
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(255,255,255,0.15);
+    }
+
+    /* hráčovo auto */
+    #car {
+      position: absolute;
+      width: 62px;
+      height: 118px;
+      bottom: 28px;
+      background: linear-gradient(#ff1a1a, #9c0000);
+      border-radius: 16px;
+      border: 2px solid rgba(255,255,255,0.18);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+
+    /* kapota + pruh */
+    #car .hood {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent 55%);
+    }
+
+    #car .stripe {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 14px;
+      height: 100%;
+      background: rgba(255,255,255,0.18);
+      border-radius: 10px;
+    }
+
+    /* okna */
+    #car .window {
+      position: absolute;
+      top: 12px;
+      left: 10px;
+      width: 42px;
+      height: 30px;
+      background: linear-gradient(#111, #222);
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,0.15);
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
+    }
+
+    /* světla */
+    #car .lights {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      width: 46px;
+      height: 16px;
+      background: linear-gradient(to right, #ffe600, #ff6600);
+      border-radius: 8px;
+      opacity: 0.9;
+      box-shadow: 0 0 12px rgba(255,180,0,0.6);
+    }
+
+    /* kola */
+    #car .wheel {
+      position: absolute;
+      width: 12px;
+      height: 22px;
+      background: #0a0a0a;
+      border-radius: 6px;
+      box-shadow: inset 0 0 4px rgba(255,255,255,0.2);
+    }
+
+    #car .wheel.left1 { left: -5px; top: 18px; }
+    #car .wheel.left2 { left: -5px; bottom: 22px; }
+    #car .wheel.right1 { right: -5px; top: 18px; }
+    #car .wheel.right2 { right: -5px; bottom: 22px; }
+
+    /* ROADSTER logo */
+    #logo {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 46px;
+      height: 46px;
+      background: #0a0a0a;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.35);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 20px;
+      color: white;
+      box-shadow: 0 0 12px rgba(255,255,255,0.12);
+    }
+
+    #logo span {
+      color: gold;
+      font-size: 24px;
+      margin-right: 2px;
+    }
+
+    #logoText {
+      position: absolute;
+      top: 98px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      letter-spacing: 2px;
+      opacity: 0.9;
+      color: white;
+      font-weight: bold;
+      text-shadow: 0 0 8px rgba(0,0,0,0.8);
+    }
+
+    /* nepřátelská auta */
+    .enemy {
+      position: absolute;
+      width: 62px;
+      height: 118px;
+      border-radius: 16px;
+      border: 2px solid rgba(255,255,255,0.18);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.55);
+      overflow: hidden;
+    }
+
+    .enemy .hood {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent 55%);
+    }
+
+    .enemy .window {
+      position: absolute;
+      top: 12px;
+      left: 10px;
+      width: 42px;
+      height: 30px;
+      background: linear-gradient(#111, #222);
+      border-radius: 8px;
+      border: 2px solid rgba(255,255,255,0.15);
+    }
+
+    .enemy .lights {
+      position: absolute;
+      bottom: 8px;
+      left: 8px;
+      width: 46px;
+      height: 16px;
+      border-radius: 8px;
+      opacity: 0.85;
+    }
+
+    .enemy .wheel {
+      position: absolute;
+      width: 12px;
+      height: 22px;
+      background: #0a0a0a;
+      border-radius: 6px;
+    }
+
+    .enemy .wheel.left1 { left: -5px; top: 18px; }
+    .enemy .wheel.left2 { left: -5px; bottom: 22px; }
+    .enemy .wheel.right1 { right: -5px; top: 18px; }
+    .enemy .wheel.right2 { right: -5px; bottom: 22px; }
+
+    /* OVLÁDÁNÍ */
+    #controls {
+      width: 100%;
+      max-width: 420px;
+      margin: 12px auto;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 12px;
+      box-sizing: border-box;
+    }
+
+    .btn {
+      flex: 1;
+      height: 80px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      border: 2px solid rgba(255,255,255,0.15);
+      color: white;
+      font-size: 28px;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      backdrop-filter: blur(6px);
+    }
+
+    .btn:active {
+      background: rgba(255,215,0,0.18);
+      border: 2px solid rgba(255,215,0,0.35);
+    }
+
+    /* GAME OVER */
+    #gameOver {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      text-align: center;
+      z-index: 999;
+    }
+
+    #gameOver h1 {
+      margin: 0;
+      font-size: 40px;
+      color: gold;
+      text-shadow: 0 0 15px rgba(255,215,0,0.3);
+    }
+
+    #gameOver p {
+      margin: 10px 0;
+      opacity: 0.9;
+    }
+
+    button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background: gold;
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(255,215,0,0.3);
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="hud">
+  <div>Skóre: <span id="score">0</span></div>
+  <div>Rychlost: <span id="speed">1</span>x</div>
+</div>
+
+<div id="game">
+  <div id="car">
+    <div class="hood"></div>
+    <div class="stripe"></div>
+    <div class="window"></div>
+    <div class="lights"></div>
+
+    <div class="wheel left1"></div>
+    <div class="wheel left2"></div>
+    <div class="wheel right1"></div>
+    <div class="wheel right2"></div>
+
+    <div id="logo"><span>★</span>R</div>
+    <div id="logoText">ROADSTER</div>
+  </div>
+
+  <div id="gameOver">
+    <h1>GAME OVER</h1>
+    <p>Tvoje skóre: <span id="finalScore">0</span></p>
+    <button onclick="restartGame()">Zkusit znovu</button>
+  </div>
+</div>
+
+<div id="controls">
+  <div class="btn" id="leftBtn">◀</div>
+  <div class="btn" id="rightBtn">▶</div>
+</div>
+
+<script>
+  const game = document.getElementById("game");
+  const car = document.getElementById("car");
+  const scoreEl = document.getElementById("score");
+  const speedEl = document.getElementById("speed");
+  const gameOverScreen = document.getElementById("gameOver");
+  const finalScoreEl = document.getElementById("finalScore");
+
+  const leftBtn = document.getElementById("leftBtn");
+  const rightBtn = document.getElementById("rightBtn");
+
+  let score = 0;
+  let speed = 4;
+  let gameRunning = true;
+  let enemies = [];
+  let laneLines = [];
+  let frame = 0;
+
+  let lanes = [];
+  let currentLane = 1;
+
+  const enemyStyles = [
+    { color: "linear-gradient(#0066ff, #003399)", lights: "linear-gradient(to right, #00ffcc, #00ffaa)" }, // police
+    { color: "linear-gradient(#ffcc00, #c49000)", lights: "linear-gradient(to right, #ffffff, #ff9900)" }, // taxi
+    { color: "linear-gradient(#00aa44, #005522)", lights: "linear-gradient(to right, #00ff66, #00ffcc)" }, // zelené
+    { color: "linear-gradient(#999999, #444444)", lights: "linear-gradient(to right, #ff0000, #ff6600)" }  // sport dark
+  ];
+
+  function updateLanes() {
+    const gameWidth = game.clientWidth;
+    const laneWidth = gameWidth / 3;
+
+    lanes = [
+      laneWidth * 0 + (laneWidth / 2) - 31,
+      laneWidth * 1 + (laneWidth / 2) - 31,
+      laneWidth * 2 + (laneWidth / 2) - 31
+    ];
+
+    car.style.left = lanes[currentLane] + "px";
+  }
+
+  function createLaneLines() {
+    for (let i = 0; i < 10; i++) {
+      const line = document.createElement("div");
+      line.classList.add("lane-line");
+      line.style.top = (i * 80) + "px";
+      game.appendChild(line);
+      laneLines.push(line);
+    }
+  }
+
+  function moveLaneLines() {
+    laneLines.forEach(line => {
+      let top = parseInt(line.style.top);
+      top += speed;
+      if (top > game.clientHeight) top = -80;
+      line.style.top = top + "px";
+    });
+  }
+
+  function createEnemy() {
+    const enemy = document.createElement("div");
+    enemy.classList.add("enemy");
+
+    const style = enemyStyles[Math.floor(Math.random() * enemyStyles.length)];
+    enemy.style.background = style.color;
+
+    enemy.innerHTML = `
+      <div class="hood"></div>
+      <div class="window"></div>
+      <div class="lights" style="background:${style.lights}; box-shadow:0 0 12px rgba(255,255,255,0.25)"></div>
+      <div class="wheel left1"></div>
+      <div class="wheel left2"></div>
+      <div class="wheel right1"></div>
+      <div class="wheel right2"></div>
+    `;
+
+    const laneIndex = Math.floor(Math.random() * 3);
+    enemy.style.left = lanes[laneIndex] + "px";
+    enemy.style.top = "-140px";
+
+    game.appendChild(enemy);
+    enemies.push(enemy);
+  }
+
+  function moveEnemies() {
+    enemies.forEach((enemy, index) => {
+      let top = parseInt(enemy.style.top);
+      top += speed + 1.2;
+      enemy.style.top = top + "px";
+
+      if (top > game.clientHeight + 150) {
+        enemy.remove();
+        enemies.splice(index, 1);
+        score += 10;
+        scoreEl.textContent = score;
+      }
+
+      if (isColliding(car, enemy)) {
+        endGame();
+      }
+    });
+  }
+
+  function isColliding(a, b) {
+    const rectA = a.getBoundingClientRect();
+    const rectB = b.getBoundingClientRect();
+
+    return !(
+      rectA.top > rectB.bottom ||
+      rectA.bottom < rectB.top ||
+      rectA.right < rectB.left ||
+      rectA.left > rectB.right
+    );
+  }
+
+  function gameLoop() {
+    if (!gameRunning) return;
+
+    frame++;
+    moveLaneLines();
+    moveEnemies();
+
+    if (frame % 65 === 0) {
+      createEnemy();
+    }
+
+    if (frame % 280 === 0) {
+      speed += 0.55;
+      speedEl.textContent = (speed / 4).toFixed(1);
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  function endGame() {
+    gameRunning = false;
+    finalScoreEl.textContent = score;
+    gameOverScreen.style.display = "flex";
+  }
+
+  function restartGame() {
+    enemies.forEach(e => e.remove());
+    enemies = [];
+    score = 0;
+    speed = 4;
+    frame = 0;
+    currentLane = 1;
+    scoreEl.textContent = score;
+    speedEl.textContent = "1";
+    gameOverScreen.style.display = "none";
+    gameRunning = true;
+
+    updateLanes();
+    requestAnimationFrame(gameLoop);
+  }
+
+  function moveLeft() {
+    if (!gameRunning) return;
+    if (currentLane > 0) currentLane--;
+    car.style.left = lanes[currentLane] + "px";
+  }
+
+  function moveRight() {
+    if (!gameRunning) return;
+    if (currentLane < 2) currentLane++;
+    car.style.left = lanes[currentLane] + "px";
+  }
+
+  leftBtn.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    moveLeft();
+  });
+
+  rightBtn.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    moveRight();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") moveLeft();
+    if (e.key === "ArrowRight") moveRight();
+  });
+
+  createLaneLines();
+  updateLanes();
+  window.addEventListener("resize", updateLanes);
+  requestAnimationFrame(gameLoop);
+</script>
+
+</body>
+</html>
