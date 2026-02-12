@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER - Canvas Edition</title>
+  <title>ROADSTER - Canvas Police Lights</title>
 
   <style>
     body {
@@ -45,7 +45,6 @@
       box-shadow: 0 0 20px rgba(255,255,255,0.08);
     }
 
-    /* CONTROLS */
     #controls {
       width: 100%;
       max-width: 420px;
@@ -89,7 +88,6 @@
       filter: brightness(1.2);
     }
 
-    /* GAME OVER */
     #gameOver {
       position: absolute;
       inset: 0;
@@ -177,7 +175,6 @@
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
 
-  // GAME STATE
   let score = 0;
   let speed = 5;
   let frame = 0;
@@ -188,7 +185,6 @@
   let holdingLeft = false;
   let holdingRight = false;
 
-  // PLAYER
   const player = {
     x: w / 2,
     y: h - 140,
@@ -196,20 +192,15 @@
     height: 118,
     targetX: w / 2,
     angle: 0,
-    spinVel: 0,
-    scale: 1
+    spinVel: 0
   };
 
-  // ROAD LINES
   let laneLines = [];
   for (let i = 0; i < 12; i++) {
     laneLines.push({ x: w/2, y: i * 90 });
   }
 
-  // ENEMIES
   let enemies = [];
-
-  // PARTICLES
   let particles = [];
   let smokes = [];
 
@@ -240,23 +231,19 @@
   }
 
   function drawRoad() {
-    // background
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, "#1a1a1a");
     grad.addColorStop(1, "#0b0b0b");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // yellow edges
     ctx.fillStyle = "rgba(255,215,0,0.35)";
     ctx.fillRect(0, 0, 10, h);
     ctx.fillRect(w - 10, 0, 10, h);
 
-    // subtle reflections
     ctx.fillStyle = "rgba(255,255,255,0.03)";
     ctx.fillRect(0, (frame * 3) % h - 80, w, 120);
 
-    // lane lines
     laneLines.forEach(line => {
       ctx.fillStyle = "rgba(255,255,255,0.55)";
       ctx.fillRect(line.x - 5, line.y, 10, 80);
@@ -270,65 +257,6 @@
     });
   }
 
-  function drawCar(x, y, width, height, colorTop, colorBottom, angle=0, label=null, siren=false) {
-    ctx.save();
-    ctx.translate(x + width/2, y + height/2);
-    ctx.rotate(angle);
-
-    // body
-    const grad = ctx.createLinearGradient(0, -height/2, 0, height/2);
-    grad.addColorStop(0, colorTop);
-    grad.addColorStop(1, colorBottom);
-
-    ctx.fillStyle = grad;
-    roundRect(-width/2, -height/2, width, height, 16, true);
-
-    // hood highlight
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    roundRect(-width/2, -height/2, width, height * 0.5, 16, true);
-
-    // stripe
-    ctx.fillStyle = "rgba(255,255,255,0.15)";
-    roundRect(-7, -height/2, 14, height, 10, true);
-
-    // window
-    ctx.fillStyle = "#111";
-    roundRect(-width/2 + 10, -height/2 + 12, width - 20, 30, 8, true);
-
-    // lights
-    ctx.fillStyle = "rgba(255,200,0,0.85)";
-    roundRect(-width/2 + 8, height/2 - 24, width - 16, 14, 7, true);
-
-    // wheels
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(-width/2 - 5, -height/2 + 18, 10, 22);
-    ctx.fillRect(-width/2 - 5, height/2 - 40, 10, 22);
-    ctx.fillRect(width/2 - 5, -height/2 + 18, 10, 22);
-    ctx.fillRect(width/2 - 5, height/2 - 40, 10, 22);
-
-    // label
-    if (label) {
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.font = "bold 10px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(label, 0, 5);
-    }
-
-    // siren bar
-    if (siren) {
-      ctx.fillStyle = (frame % 6 < 3) ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
-      roundRect(-18, -height/2 + 4, 36, 10, 6, true);
-
-      // glow
-      ctx.globalAlpha = 0.35;
-      ctx.fillStyle = (frame % 6 < 3) ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
-      roundRect(-50, -height/2 + 10, 100, 220, 60, true);
-      ctx.globalAlpha = 1;
-    }
-
-    ctx.restore();
-  }
-
   function roundRect(x, y, width, height, radius, fill) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -340,22 +268,96 @@
     if (fill) ctx.fill();
   }
 
-  function drawPlayer() {
-    drawCar(
-      player.x,
-      player.y,
-      player.width,
-      player.height,
-      "#ff1a1a",
-      "#9c0000",
-      player.angle,
-      "ROADSTER",
-      false
+  function drawPoliceLightCone(x, y, width, height) {
+    const blink = (frame % 8 < 4);
+
+    ctx.save();
+    ctx.globalAlpha = blink ? 0.55 : 0.35;
+
+    const coneGrad = ctx.createRadialGradient(
+      x + width/2, y + 20, 10,
+      x + width/2, y + 130, 140
     );
+
+    if (blink) {
+      coneGrad.addColorStop(0, "rgba(0,150,255,0.65)");
+      coneGrad.addColorStop(0.4, "rgba(0,150,255,0.22)");
+      coneGrad.addColorStop(1, "rgba(0,150,255,0)");
+    } else {
+      coneGrad.addColorStop(0, "rgba(255,0,0,0.55)");
+      coneGrad.addColorStop(0.4, "rgba(255,0,0,0.18)");
+      coneGrad.addColorStop(1, "rgba(255,0,0,0)");
+    }
+
+    ctx.fillStyle = coneGrad;
+    roundRect(x - 40, y + 10, width + 80, height + 180, 90, true);
+
+    ctx.restore();
+  }
+
+  function drawCar(x, y, width, height, colorTop, colorBottom, angle=0, label=null, siren=false) {
+    ctx.save();
+    ctx.translate(x + width/2, y + height/2);
+    ctx.rotate(angle);
+
+    const grad = ctx.createLinearGradient(0, -height/2, 0, height/2);
+    grad.addColorStop(0, colorTop);
+    grad.addColorStop(1, colorBottom);
+
+    ctx.fillStyle = grad;
+    roundRect(-width/2, -height/2, width, height, 16, true);
+
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    roundRect(-width/2, -height/2, width, height * 0.5, 16, true);
+
+    ctx.fillStyle = "rgba(255,255,255,0.15)";
+    roundRect(-7, -height/2, 14, height, 10, true);
+
+    ctx.fillStyle = "#111";
+    roundRect(-width/2 + 10, -height/2 + 12, width - 20, 30, 8, true);
+
+    ctx.fillStyle = "rgba(255,200,0,0.85)";
+    roundRect(-width/2 + 8, height/2 - 24, width - 16, 14, 7, true);
+
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(-width/2 - 5, -height/2 + 18, 10, 22);
+    ctx.fillRect(-width/2 - 5, height/2 - 40, 10, 22);
+    ctx.fillRect(width/2 - 5, -height/2 + 18, 10, 22);
+    ctx.fillRect(width/2 - 5, height/2 - 40, 10, 22);
+
+    if (label) {
+      ctx.fillStyle = "rgba(255,255,255,0.95)";
+      ctx.font = "bold 10px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(label, 0, 5);
+    }
+
+    if (siren) {
+      const blink = (frame % 8 < 4);
+
+      ctx.fillStyle = blink ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
+      roundRect(-18, -height/2 + 4, 36, 10, 6, true);
+
+      // stronger glow around siren
+      ctx.globalAlpha = blink ? 0.35 : 0.3;
+      ctx.fillStyle = blink ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
+      roundRect(-55, -height/2 + 2, 110, 28, 20, true);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  }
+
+  function drawPlayer() {
+    drawCar(player.x, player.y, player.width, player.height, "#ff1a1a", "#9c0000", player.angle, "ROADSTER", false);
   }
 
   function drawEnemies() {
     enemies.forEach(e => {
+      if (e.type === "police") {
+        drawPoliceLightCone(e.x, e.y, e.width, e.height);
+      }
+
       if (e.type === "sedan") drawCar(e.x, e.y, e.width, e.height, "#999", "#333", e.angle);
       if (e.type === "sport") drawCar(e.x, e.y, e.width, e.height, "#00c6ff", "#003cff", e.angle);
       if (e.type === "taxi") drawCar(e.x, e.y, e.width, e.height, "#ffcc00", "#c48d00", e.angle, "TAXI");
@@ -433,7 +435,6 @@
     enemy.spinVel = rand(0.25, 0.45);
     enemy.vx = rand(-2.5, 2.5);
 
-    spawnExplosion(player.x + player.width/2, player.y + player.height/2);
     spawnParticles(player.x + player.width/2, player.y + player.height/2);
     spawnSmoke(player.x + player.width/2, player.y + player.height/2);
 
@@ -443,21 +444,13 @@
     }, 5000);
   }
 
-  function spawnExplosion(x, y) {
-    particles.push({
-      x, y,
-      life: 60,
-      size: 1
-    });
-  }
-
   function spawnParticles(x, y) {
-    for (let i = 0; i < 26; i++) {
+    for (let i = 0; i < 30; i++) {
       particles.push({
         x,
         y,
-        vx: rand(-8, 8),
-        vy: rand(-8, 8),
+        vx: rand(-9, 9),
+        vy: rand(-9, 9),
         life: rand(25, 45),
         color: ["orange", "yellow", "red", "#ff6600", "#ffaa00", "#fff"][Math.floor(Math.random()*6)]
       });
@@ -465,7 +458,7 @@
   }
 
   function spawnSmoke(x, y) {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       smokes.push({
         x: x + rand(-25, 25),
         y: y + rand(-25, 25),
@@ -478,41 +471,22 @@
 
   function drawParticles() {
     particles.forEach(p => {
-      if (p.size) {
-        // explosion ring
-        ctx.beginPath();
-        ctx.fillStyle = "rgba(255,140,0,0.25)";
-        ctx.arc(p.x, p.y, p.size * 14, 0, Math.PI*2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.fillStyle = "rgba(255,255,0,0.35)";
-        ctx.arc(p.x, p.y, p.size * 8, 0, Math.PI*2);
-        ctx.fill();
-
-        p.size += 0.55 * timeScale;
-      } else {
-        // spark
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.max(p.life / 45, 0);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(p.life / 45, 0);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     });
   }
 
   function updateParticles() {
     particles.forEach((p, idx) => {
       p.life -= 1 * timeScale;
-
-      if (!p.size) {
-        p.x += p.vx * timeScale;
-        p.y += p.vy * timeScale;
-        p.vx *= 0.97;
-        p.vy *= 0.97;
-      }
+      p.x += p.vx * timeScale;
+      p.y += p.vy * timeScale;
+      p.vx *= 0.97;
+      p.vy *= 0.97;
 
       if (p.life <= 0) particles.splice(idx, 1);
     });
@@ -568,7 +542,6 @@
 
   window.restartGame = restartGame;
 
-  // CONTROLS
   leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
   leftBtn.addEventListener("touchend", () => holdingLeft = false);
 
@@ -585,7 +558,6 @@
     if (e.key === "ArrowRight") holdingRight = false;
   });
 
-  // MAIN LOOP
   function loop() {
     if (running) {
       frame++;
