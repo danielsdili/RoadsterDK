@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER RACER - BURNOUT EDITION</title>
+  <title>ROADSTER RACER - BURNOUT CRASH</title>
 
   <style>
     body {
@@ -48,10 +48,10 @@
 
     @keyframes shake {
       0% { transform: translate(0px, 0px); }
-      25% { transform: translate(4px, -3px); }
-      50% { transform: translate(-4px, 3px); }
-      75% { transform: translate(3px, 4px); }
-      100% { transform: translate(-3px, -4px); }
+      25% { transform: translate(5px, -4px); }
+      50% { transform: translate(-5px, 4px); }
+      75% { transform: translate(4px, 5px); }
+      100% { transform: translate(-4px, -5px); }
     }
 
     /* silnice textura */
@@ -102,6 +102,21 @@
       border: 2px solid rgba(255,255,255,0.18);
       box-shadow: 0 12px 25px rgba(0,0,0,0.55);
       overflow: hidden;
+
+      transform-origin: center;
+    }
+
+    /* CRASH animace */
+    .crashed {
+      animation: spinCrash 0.8s ease-out forwards;
+      filter: brightness(0.55) contrast(1.2) saturate(0.7);
+    }
+
+    @keyframes spinCrash {
+      0% { transform: rotate(0deg) scale(1); }
+      35% { transform: rotate(240deg) scale(1.05); }
+      70% { transform: rotate(520deg) scale(0.95); }
+      100% { transform: rotate(720deg) scale(0.9); }
     }
 
     #car .hood {
@@ -255,7 +270,7 @@
       border-radius: 50%;
       pointer-events: none;
       box-shadow: 0 0 10px rgba(255,150,0,0.7);
-      animation: particleMove 0.6s ease-out forwards;
+      animation: particleMove 0.7s ease-out forwards;
     }
 
     @keyframes particleMove {
@@ -267,10 +282,11 @@
     #flash {
       position: absolute;
       inset: 0;
-      background: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.95);
       opacity: 0;
       pointer-events: none;
       z-index: 500;
+      transition: opacity 0.2s;
     }
 
     /* OVLÁDÁNÍ */
@@ -403,6 +419,8 @@
   let laneLines = [];
   let frame = 0;
 
+  let crashed = false;
+
   // SMOOTH pixel movement
   let carX = 0;
   let targetX = 0;
@@ -410,6 +428,9 @@
 
   let holdingLeft = false;
   let holdingRight = false;
+
+  // SLOWMO faktor
+  let timeScale = 1;
 
   const enemyStyles = [
     { color: "linear-gradient(#0066ff, #003399)", lights: "linear-gradient(to right, #00ffcc, #00ffaa)" },
@@ -431,7 +452,7 @@
   function moveLaneLines() {
     laneLines.forEach(line => {
       let top = parseInt(line.style.top);
-      top += speed;
+      top += speed * timeScale;
       if (top > game.clientHeight) top = -80;
       line.style.top = top + "px";
     });
@@ -467,7 +488,7 @@
   function moveEnemies() {
     enemies.forEach((enemy, index) => {
       let top = parseInt(enemy.style.top);
-      top += speed + 1.2;
+      top += (speed + 1.2) * timeScale;
       enemy.style.top = top + "px";
 
       if (top > game.clientHeight + 150) {
@@ -477,9 +498,8 @@
         scoreEl.textContent = score;
       }
 
-      if (isColliding(car, enemy)) {
+      if (!crashed && isColliding(car, enemy)) {
         crashExplosion();
-        endGame();
       }
     });
   }
@@ -508,19 +528,26 @@
     if (targetX < minX) targetX = minX;
     if (targetX > maxX) targetX = maxX;
 
-    // plynulé přibližování k cíli
     carX += (targetX - carX) * 0.25;
     car.style.left = carX + "px";
   }
 
   function crashExplosion() {
+    crashed = true;
+
+    // SLOWMO
+    timeScale = 0.25;
+
     // flash
     flash.style.opacity = "1";
-    setTimeout(() => flash.style.opacity = "0", 120);
+    setTimeout(() => flash.style.opacity = "0", 160);
 
     // shake
     game.classList.add("shake");
-    setTimeout(() => game.classList.remove("shake"), 400);
+    setTimeout(() => game.classList.remove("shake"), 550);
+
+    // spin car
+    car.classList.add("crashed");
 
     // particles
     const carRect = car.getBoundingClientRect();
@@ -529,12 +556,12 @@
     const centerX = carRect.left - gameRect.left + carRect.width / 2;
     const centerY = carRect.top - gameRect.top + carRect.height / 2;
 
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 22; i++) {
       const p = document.createElement("div");
       p.classList.add("particle");
 
-      const dx = (Math.random() * 240 - 120) + "px";
-      const dy = (Math.random() * 240 - 120) + "px";
+      const dx = (Math.random() * 280 - 140) + "px";
+      const dy = (Math.random() * 280 - 140) + "px";
 
       p.style.left = centerX + "px";
       p.style.top = centerY + "px";
@@ -542,14 +569,18 @@
       p.style.setProperty("--dx", dx);
       p.style.setProperty("--dy", dy);
 
-      // random barva výbuchu
-      const colors = ["orange", "yellow", "red", "#ff6600", "#ffaa00"];
+      const colors = ["orange", "yellow", "red", "#ff6600", "#ffaa00", "#ffffff"];
       p.style.background = colors[Math.floor(Math.random() * colors.length)];
 
       game.appendChild(p);
-
-      setTimeout(() => p.remove(), 650);
+      setTimeout(() => p.remove(), 800);
     }
+
+    // po animaci konec
+    setTimeout(() => {
+      timeScale = 0;
+      endGame();
+    }, 900);
   }
 
   function gameLoop() {
@@ -561,11 +592,11 @@
     moveLaneLines();
     moveEnemies();
 
-    if (frame % 60 === 0) {
+    if (!crashed && frame % 60 === 0) {
       createEnemy();
     }
 
-    if (frame % 260 === 0) {
+    if (frame % 260 === 0 && !crashed) {
       speed += 0.55;
       speedEl.textContent = (speed / 4).toFixed(1);
     }
@@ -587,6 +618,9 @@
     speed = 4;
     frame = 0;
 
+    crashed = false;
+    timeScale = 1;
+
     scoreEl.textContent = score;
     speedEl.textContent = "1";
     gameOverScreen.style.display = "none";
@@ -594,7 +628,8 @@
     holdingLeft = false;
     holdingRight = false;
 
-    // reset auta doprostřed
+    car.classList.remove("crashed");
+
     carX = game.clientWidth / 2 - 31;
     targetX = carX;
     car.style.left = carX + "px";
@@ -608,19 +643,13 @@
     e.preventDefault();
     holdingLeft = true;
   });
-
-  leftBtn.addEventListener("touchend", () => {
-    holdingLeft = false;
-  });
+  leftBtn.addEventListener("touchend", () => holdingLeft = false);
 
   rightBtn.addEventListener("touchstart", (e) => {
     e.preventDefault();
     holdingRight = true;
   });
-
-  rightBtn.addEventListener("touchend", () => {
-    holdingRight = false;
-  });
+  rightBtn.addEventListener("touchend", () => holdingRight = false);
 
   // PC hold
   document.addEventListener("keydown", (e) => {
