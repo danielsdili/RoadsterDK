@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER RACER - CINEMATIC CRASH</title>
+  <title>ROADSTER RACER - DOUBLE CRASH</title>
 
   <style>
     body {
@@ -68,6 +68,7 @@
       );
       opacity: 0.4;
       pointer-events: none;
+      z-index: 0;
     }
 
     #game::after {
@@ -77,6 +78,7 @@
       border-left: 6px solid rgba(255,255,255,0.12);
       border-right: 6px solid rgba(255,255,255,0.12);
       pointer-events: none;
+      z-index: 0;
     }
 
     .lane-line {
@@ -88,6 +90,18 @@
       transform: translateX(-50%);
       border-radius: 5px;
       box-shadow: 0 0 10px rgba(255,255,255,0.15);
+      z-index: 1;
+    }
+
+    /* FLASH */
+    #flash {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.95);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 500;
+      transition: opacity 0.25s;
     }
 
     /* hráčovo auto */
@@ -98,10 +112,14 @@
       bottom: 28px;
       background: linear-gradient(#ff1a1a, #9c0000);
       border-radius: 16px;
-      border: 2px solid rgba(255,255,255,0.18);
-      box-shadow: 0 12px 25px rgba(0,0,0,0.55);
+      border: 2px solid rgba(255,255,255,0.25);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.65);
       overflow: hidden;
       transform-origin: center;
+
+      /* DŮLEŽITÉ: auto neprůhledné a nad čárama */
+      opacity: 1;
+      z-index: 20;
     }
 
     /* CRASH SPIN */
@@ -120,7 +138,7 @@
     #car .hood {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent 55%);
+      background: linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(0,0,0,0.0) 55%);
     }
 
     #car .stripe {
@@ -130,7 +148,7 @@
       transform: translateX(-50%);
       width: 14px;
       height: 100%;
-      background: rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.22);
       border-radius: 10px;
     }
 
@@ -140,9 +158,9 @@
       left: 10px;
       width: 42px;
       height: 30px;
-      background: linear-gradient(#111, #222);
+      background: linear-gradient(#0a0a0a, #222);
       border-radius: 8px;
-      border: 2px solid rgba(255,255,255,0.15);
+      border: 2px solid rgba(255,255,255,0.18);
     }
 
     #car .lights {
@@ -153,7 +171,7 @@
       height: 16px;
       background: linear-gradient(to right, #ffe600, #ff6600);
       border-radius: 8px;
-      opacity: 0.9;
+      opacity: 0.95;
       box-shadow: 0 0 12px rgba(255,180,0,0.6);
     }
 
@@ -161,7 +179,7 @@
       position: absolute;
       width: 12px;
       height: 22px;
-      background: #0a0a0a;
+      background: #050505;
       border-radius: 6px;
     }
 
@@ -203,7 +221,7 @@
       transform: translateX(-50%);
       font-size: 10px;
       letter-spacing: 2px;
-      opacity: 0.9;
+      opacity: 0.95;
       font-weight: bold;
       text-shadow: 0 0 8px rgba(0,0,0,0.8);
     }
@@ -217,6 +235,8 @@
       border: 2px solid rgba(255,255,255,0.18);
       box-shadow: 0 12px 25px rgba(0,0,0,0.55);
       overflow: hidden;
+      z-index: 10;
+      transform-origin: center;
     }
 
     .enemy .hood {
@@ -259,15 +279,18 @@
     .enemy .wheel.right1 { right: -5px; top: 18px; }
     .enemy .wheel.right2 { right: -5px; bottom: 22px; }
 
-    /* FLASH */
-    #flash {
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,0.95);
-      opacity: 0;
-      pointer-events: none;
-      z-index: 500;
-      transition: opacity 0.25s;
+    /* Enemy crash */
+    .enemy-crashed {
+      animation: enemySpin 1.6s ease-out forwards;
+      filter: brightness(0.45) contrast(1.3) saturate(0.5);
+      z-index: 30;
+    }
+
+    @keyframes enemySpin {
+      0% { transform: rotate(0deg) translate(0,0) scale(1); opacity: 1; }
+      35% { transform: rotate(240deg) translate(40px, 40px) scale(1.05); opacity: 1; }
+      75% { transform: rotate(620deg) translate(-80px, 140px) scale(0.85); opacity: 0.8; }
+      100% { transform: rotate(980deg) translate(-160px, 220px) scale(0.65); opacity: 0; }
     }
 
     /* EXPLOSION CIRCLE */
@@ -465,7 +488,7 @@
   let holdingLeft = false;
   let holdingRight = false;
 
-  // time scale (slowmo)
+  // slowmo
   let timeScale = 1;
 
   const enemyStyles = [
@@ -535,7 +558,7 @@
       }
 
       if (!crashed && isColliding(car, enemy)) {
-        crashExplosion();
+        crashExplosion(enemy);
       }
     });
   }
@@ -581,10 +604,8 @@
     for (let i = 0; i < 6; i++) {
       const smoke = document.createElement("div");
       smoke.classList.add("smoke");
-
       smoke.style.left = (x + (Math.random() * 30 - 15)) + "px";
       smoke.style.top = (y + (Math.random() * 30 - 15)) + "px";
-
       game.appendChild(smoke);
       setTimeout(() => smoke.remove(), 2500);
     }
@@ -612,22 +633,24 @@
     }
   }
 
-  function crashExplosion() {
+  function crashExplosion(enemyHit) {
     crashed = true;
-
-    // slow motion na 3s crash scény
     timeScale = 0.2;
 
-    // flash
     flash.style.opacity = "1";
     setTimeout(() => flash.style.opacity = "0", 180);
 
-    // shake
     game.classList.add("shake");
     setTimeout(() => game.classList.remove("shake"), 700);
 
-    // spin car
     car.classList.add("crashed");
+
+    if (enemyHit) {
+      enemyHit.classList.add("enemy-crashed");
+      setTimeout(() => {
+        if (enemyHit.parentNode) enemyHit.remove();
+      }, 1600);
+    }
 
     const carRect = car.getBoundingClientRect();
     const gameRect = game.getBoundingClientRect();
@@ -635,12 +658,10 @@
     const centerX = carRect.left - gameRect.left + carRect.width / 2;
     const centerY = carRect.top - gameRect.top + carRect.height / 2;
 
-    // explosion visuals
     spawnExplosion(centerX, centerY);
     spawnParticles(centerX, centerY);
     spawnSmoke(centerX, centerY);
 
-    // po 3 sekundách konec a skóre
     setTimeout(() => {
       timeScale = 0;
       endGame();
@@ -702,7 +723,6 @@
     requestAnimationFrame(gameLoop);
   }
 
-  // TOUCH HOLD
   leftBtn.addEventListener("touchstart", (e) => {
     e.preventDefault();
     holdingLeft = true;
@@ -715,7 +735,6 @@
   });
   rightBtn.addEventListener("touchend", () => holdingRight = false);
 
-  // PC hold
   document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") holdingLeft = true;
     if (e.key === "ArrowRight") holdingRight = true;
@@ -726,7 +745,6 @@
     if (e.key === "ArrowRight") holdingRight = false;
   });
 
-  // INIT
   createLaneLines();
   setTimeout(() => {
     carX = game.clientWidth / 2 - 31;
