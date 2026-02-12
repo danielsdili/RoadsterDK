@@ -41,7 +41,6 @@
       box-shadow: 0 0 20px rgba(255,255,255,0.08);
     }
 
-    /* silnice textura */
     #game::before {
       content: "";
       position: absolute;
@@ -57,7 +56,6 @@
       pointer-events: none;
     }
 
-    /* okraje silnice */
     #game::after {
       content: "";
       position: absolute;
@@ -89,9 +87,11 @@
       border: 2px solid rgba(255,255,255,0.18);
       box-shadow: 0 12px 25px rgba(0,0,0,0.55);
       overflow: hidden;
+
+      /* SMOOTH pohyb */
+      transition: left 0.12s ease;
     }
 
-    /* kapota + pruh */
     #car .hood {
       position: absolute;
       top: 0;
@@ -112,7 +112,6 @@
       border-radius: 10px;
     }
 
-    /* okna */
     #car .window {
       position: absolute;
       top: 12px;
@@ -125,7 +124,6 @@
       box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
     }
 
-    /* světla */
     #car .lights {
       position: absolute;
       bottom: 8px;
@@ -138,7 +136,6 @@
       box-shadow: 0 0 12px rgba(255,180,0,0.6);
     }
 
-    /* kola */
     #car .wheel {
       position: absolute;
       width: 12px;
@@ -372,11 +369,17 @@
   let lanes = [];
   let currentLane = 1;
 
+  // SMOOTH INPUT
+  let holdingLeft = false;
+  let holdingRight = false;
+  let lastMoveTime = 0;
+  const moveCooldown = 90; // ms (rychlost přepínání pruhů při držení)
+
   const enemyStyles = [
-    { color: "linear-gradient(#0066ff, #003399)", lights: "linear-gradient(to right, #00ffcc, #00ffaa)" }, // police
-    { color: "linear-gradient(#ffcc00, #c49000)", lights: "linear-gradient(to right, #ffffff, #ff9900)" }, // taxi
-    { color: "linear-gradient(#00aa44, #005522)", lights: "linear-gradient(to right, #00ff66, #00ffcc)" }, // zelené
-    { color: "linear-gradient(#999999, #444444)", lights: "linear-gradient(to right, #ff0000, #ff6600)" }  // sport dark
+    { color: "linear-gradient(#0066ff, #003399)", lights: "linear-gradient(to right, #00ffcc, #00ffaa)" },
+    { color: "linear-gradient(#ffcc00, #c49000)", lights: "linear-gradient(to right, #ffffff, #ff9900)" },
+    { color: "linear-gradient(#00aa44, #005522)", lights: "linear-gradient(to right, #00ff66, #00ffcc)" },
+    { color: "linear-gradient(#999999, #444444)", lights: "linear-gradient(to right, #ff0000, #ff6600)" }
   ];
 
   function updateLanes() {
@@ -467,10 +470,29 @@
     );
   }
 
+  function smoothInput() {
+    const now = Date.now();
+
+    if (now - lastMoveTime < moveCooldown) return;
+
+    if (holdingLeft && currentLane > 0) {
+      currentLane--;
+      car.style.left = lanes[currentLane] + "px";
+      lastMoveTime = now;
+    }
+
+    if (holdingRight && currentLane < 2) {
+      currentLane++;
+      car.style.left = lanes[currentLane] + "px";
+      lastMoveTime = now;
+    }
+  }
+
   function gameLoop() {
     if (!gameRunning) return;
 
     frame++;
+    smoothInput();
     moveLaneLines();
     moveEnemies();
 
@@ -504,37 +526,44 @@
     gameOverScreen.style.display = "none";
     gameRunning = true;
 
+    holdingLeft = false;
+    holdingRight = false;
+
     updateLanes();
     requestAnimationFrame(gameLoop);
   }
 
-  function moveLeft() {
-    if (!gameRunning) return;
-    if (currentLane > 0) currentLane--;
-    car.style.left = lanes[currentLane] + "px";
-  }
-
-  function moveRight() {
-    if (!gameRunning) return;
-    if (currentLane < 2) currentLane++;
-    car.style.left = lanes[currentLane] + "px";
-  }
-
+  // TOUCH HOLD
   leftBtn.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    moveLeft();
+    holdingLeft = true;
+  });
+
+  leftBtn.addEventListener("touchend", () => {
+    holdingLeft = false;
   });
 
   rightBtn.addEventListener("touchstart", (e) => {
     e.preventDefault();
-    moveRight();
+    holdingRight = true;
   });
 
+  rightBtn.addEventListener("touchend", () => {
+    holdingRight = false;
+  });
+
+  // PC šipky (držení)
   document.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowLeft") moveLeft();
-    if (e.key === "ArrowRight") moveRight();
+    if (e.key === "ArrowLeft") holdingLeft = true;
+    if (e.key === "ArrowRight") holdingRight = true;
   });
 
+  document.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft") holdingLeft = false;
+    if (e.key === "ArrowRight") holdingRight = false;
+  });
+
+  // INIT
   createLaneLines();
   updateLanes();
   window.addEventListener("resize", updateLanes);
