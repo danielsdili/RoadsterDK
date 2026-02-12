@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER RACER ULTRA</title>
+  <title>ROADSTER RACER - BURNOUT EDITION</title>
 
   <style>
     body {
@@ -41,6 +41,20 @@
       box-shadow: 0 0 20px rgba(255,255,255,0.08);
     }
 
+    /* SHAKE efekt */
+    .shake {
+      animation: shake 0.25s linear infinite;
+    }
+
+    @keyframes shake {
+      0% { transform: translate(0px, 0px); }
+      25% { transform: translate(4px, -3px); }
+      50% { transform: translate(-4px, 3px); }
+      75% { transform: translate(3px, 4px); }
+      100% { transform: translate(-3px, -4px); }
+    }
+
+    /* silnice textura */
     #game::before {
       content: "";
       position: absolute;
@@ -56,6 +70,7 @@
       pointer-events: none;
     }
 
+    /* okraje silnice */
     #game::after {
       content: "";
       position: absolute;
@@ -87,17 +102,11 @@
       border: 2px solid rgba(255,255,255,0.18);
       box-shadow: 0 12px 25px rgba(0,0,0,0.55);
       overflow: hidden;
-
-      /* SMOOTH pohyb */
-      transition: left 0.12s ease;
     }
 
     #car .hood {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
+      inset: 0;
       background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent 55%);
     }
 
@@ -121,7 +130,6 @@
       background: linear-gradient(#111, #222);
       border-radius: 8px;
       border: 2px solid rgba(255,255,255,0.15);
-      box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
     }
 
     #car .lights {
@@ -142,7 +150,6 @@
       height: 22px;
       background: #0a0a0a;
       border-radius: 6px;
-      box-shadow: inset 0 0 4px rgba(255,255,255,0.2);
     }
 
     #car .wheel.left1 { left: -5px; top: 18px; }
@@ -184,12 +191,11 @@
       font-size: 10px;
       letter-spacing: 2px;
       opacity: 0.9;
-      color: white;
       font-weight: bold;
       text-shadow: 0 0 8px rgba(0,0,0,0.8);
     }
 
-    /* nepřátelská auta */
+    /* nepřátelé */
     .enemy {
       position: absolute;
       width: 62px;
@@ -239,6 +245,33 @@
     .enemy .wheel.left2 { left: -5px; bottom: 22px; }
     .enemy .wheel.right1 { right: -5px; top: 18px; }
     .enemy .wheel.right2 { right: -5px; bottom: 22px; }
+
+    /* EXPLOZE částice */
+    .particle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: orange;
+      border-radius: 50%;
+      pointer-events: none;
+      box-shadow: 0 0 10px rgba(255,150,0,0.7);
+      animation: particleMove 0.6s ease-out forwards;
+    }
+
+    @keyframes particleMove {
+      0% { transform: scale(1) translate(0,0); opacity: 1; }
+      100% { transform: scale(0.2) translate(var(--dx), var(--dy)); opacity: 0; }
+    }
+
+    /* FLASH */
+    #flash {
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.9);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 500;
+    }
 
     /* OVLÁDÁNÍ */
     #controls {
@@ -321,6 +354,8 @@
 </div>
 
 <div id="game">
+  <div id="flash"></div>
+
   <div id="car">
     <div class="hood"></div>
     <div class="stripe"></div>
@@ -337,7 +372,7 @@
   </div>
 
   <div id="gameOver">
-    <h1>GAME OVER</h1>
+    <h1>CRASHED!</h1>
     <p>Tvoje skóre: <span id="finalScore">0</span></p>
     <button onclick="restartGame()">Zkusit znovu</button>
   </div>
@@ -351,6 +386,8 @@
 <script>
   const game = document.getElementById("game");
   const car = document.getElementById("car");
+  const flash = document.getElementById("flash");
+
   const scoreEl = document.getElementById("score");
   const speedEl = document.getElementById("speed");
   const gameOverScreen = document.getElementById("gameOver");
@@ -366,14 +403,13 @@
   let laneLines = [];
   let frame = 0;
 
-  let lanes = [];
-  let currentLane = 1;
+  // SMOOTH pixel movement
+  let carX = 0;
+  let targetX = 0;
+  const carMoveSpeed = 7;
 
-  // SMOOTH INPUT
   let holdingLeft = false;
   let holdingRight = false;
-  let lastMoveTime = 0;
-  const moveCooldown = 90; // ms (rychlost přepínání pruhů při držení)
 
   const enemyStyles = [
     { color: "linear-gradient(#0066ff, #003399)", lights: "linear-gradient(to right, #00ffcc, #00ffaa)" },
@@ -381,19 +417,6 @@
     { color: "linear-gradient(#00aa44, #005522)", lights: "linear-gradient(to right, #00ff66, #00ffcc)" },
     { color: "linear-gradient(#999999, #444444)", lights: "linear-gradient(to right, #ff0000, #ff6600)" }
   ];
-
-  function updateLanes() {
-    const gameWidth = game.clientWidth;
-    const laneWidth = gameWidth / 3;
-
-    lanes = [
-      laneWidth * 0 + (laneWidth / 2) - 31,
-      laneWidth * 1 + (laneWidth / 2) - 31,
-      laneWidth * 2 + (laneWidth / 2) - 31
-    ];
-
-    car.style.left = lanes[currentLane] + "px";
-  }
 
   function createLaneLines() {
     for (let i = 0; i < 10; i++) {
@@ -431,8 +454,10 @@
       <div class="wheel right2"></div>
     `;
 
-    const laneIndex = Math.floor(Math.random() * 3);
-    enemy.style.left = lanes[laneIndex] + "px";
+    const minX = 20;
+    const maxX = game.clientWidth - 82;
+
+    enemy.style.left = (Math.random() * (maxX - minX) + minX) + "px";
     enemy.style.top = "-140px";
 
     game.appendChild(enemy);
@@ -453,6 +478,7 @@
       }
 
       if (isColliding(car, enemy)) {
+        crashExplosion();
         endGame();
       }
     });
@@ -470,21 +496,59 @@
     );
   }
 
-  function smoothInput() {
-    const now = Date.now();
+  function moveCarSmooth() {
+    if (!gameRunning) return;
 
-    if (now - lastMoveTime < moveCooldown) return;
+    if (holdingLeft) targetX -= carMoveSpeed;
+    if (holdingRight) targetX += carMoveSpeed;
 
-    if (holdingLeft && currentLane > 0) {
-      currentLane--;
-      car.style.left = lanes[currentLane] + "px";
-      lastMoveTime = now;
-    }
+    const minX = 20;
+    const maxX = game.clientWidth - 82;
 
-    if (holdingRight && currentLane < 2) {
-      currentLane++;
-      car.style.left = lanes[currentLane] + "px";
-      lastMoveTime = now;
+    if (targetX < minX) targetX = minX;
+    if (targetX > maxX) targetX = maxX;
+
+    // plynulé přibližování k cíli
+    carX += (targetX - carX) * 0.25;
+    car.style.left = carX + "px";
+  }
+
+  function crashExplosion() {
+    // flash
+    flash.style.opacity = "1";
+    setTimeout(() => flash.style.opacity = "0", 120);
+
+    // shake
+    game.classList.add("shake");
+    setTimeout(() => game.classList.remove("shake"), 400);
+
+    // particles
+    const carRect = car.getBoundingClientRect();
+    const gameRect = game.getBoundingClientRect();
+
+    const centerX = carRect.left - gameRect.left + carRect.width / 2;
+    const centerY = carRect.top - gameRect.top + carRect.height / 2;
+
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement("div");
+      p.classList.add("particle");
+
+      const dx = (Math.random() * 240 - 120) + "px";
+      const dy = (Math.random() * 240 - 120) + "px";
+
+      p.style.left = centerX + "px";
+      p.style.top = centerY + "px";
+
+      p.style.setProperty("--dx", dx);
+      p.style.setProperty("--dy", dy);
+
+      // random barva výbuchu
+      const colors = ["orange", "yellow", "red", "#ff6600", "#ffaa00"];
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+      game.appendChild(p);
+
+      setTimeout(() => p.remove(), 650);
     }
   }
 
@@ -492,15 +556,16 @@
     if (!gameRunning) return;
 
     frame++;
-    smoothInput();
+
+    moveCarSmooth();
     moveLaneLines();
     moveEnemies();
 
-    if (frame % 65 === 0) {
+    if (frame % 60 === 0) {
       createEnemy();
     }
 
-    if (frame % 280 === 0) {
+    if (frame % 260 === 0) {
       speed += 0.55;
       speedEl.textContent = (speed / 4).toFixed(1);
     }
@@ -517,19 +582,24 @@
   function restartGame() {
     enemies.forEach(e => e.remove());
     enemies = [];
+
     score = 0;
     speed = 4;
     frame = 0;
-    currentLane = 1;
+
     scoreEl.textContent = score;
     speedEl.textContent = "1";
     gameOverScreen.style.display = "none";
-    gameRunning = true;
 
     holdingLeft = false;
     holdingRight = false;
 
-    updateLanes();
+    // reset auta doprostřed
+    carX = game.clientWidth / 2 - 31;
+    targetX = carX;
+    car.style.left = carX + "px";
+
+    gameRunning = true;
     requestAnimationFrame(gameLoop);
   }
 
@@ -552,7 +622,7 @@
     holdingRight = false;
   });
 
-  // PC šipky (držení)
+  // PC hold
   document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") holdingLeft = true;
     if (e.key === "ArrowRight") holdingRight = true;
@@ -565,8 +635,18 @@
 
   // INIT
   createLaneLines();
-  updateLanes();
-  window.addEventListener("resize", updateLanes);
+  setTimeout(() => {
+    carX = game.clientWidth / 2 - 31;
+    targetX = carX;
+    car.style.left = carX + "px";
+  }, 50);
+
+  window.addEventListener("resize", () => {
+    carX = game.clientWidth / 2 - 31;
+    targetX = carX;
+    car.style.left = carX + "px";
+  });
+
   requestAnimationFrame(gameLoop);
 </script>
 
