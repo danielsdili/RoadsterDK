@@ -167,7 +167,6 @@
       filter: brightness(1.2);
     }
 
-    /* intro flash */
     #introFlash {
       position: absolute;
       inset: 0;
@@ -321,7 +320,6 @@
   let holdingLeft = false;
   let holdingRight = false;
 
-  // CAMERA FX
   let camShake = 0;
 
   const player = {
@@ -352,28 +350,18 @@
     return Math.random() * (max - min) + min;
   }
 
-  function roundRect(x, y, width, height, radius, fill) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.arcTo(x + width, y, x + width, y + height, radius);
-    ctx.arcTo(x + width, y + height, x, y + height, radius);
-    ctx.arcTo(x, y + height, x, y, radius);
-    ctx.arcTo(x, y, x + width, y, radius);
-    ctx.closePath();
-    if (fill) ctx.fill();
-  }
-
   function spawnEnemy() {
     const types = ["sedan", "sport", "taxi", "police", "van", "truck"];
     const type = types[Math.floor(Math.random() * types.length)];
 
     let ew = 54, eh = 104;
     if (type === "police") { ew = 62; eh = 118; }
-    if (type === "truck") { ew = 64; eh = 118; }
-    if (type === "van") { ew = 60; eh = 114; }
+    if (type === "truck") { ew = 70; eh = 125; }
+    if (type === "van") { ew = 64; eh = 120; }
+    if (type === "sport") { ew = 60; eh = 102; }
 
     enemies.push({
-      x: rand(40, w - 100),
+      x: rand(40, w - 110),
       y: -200,
       width: ew,
       height: eh,
@@ -395,7 +383,7 @@
   function drawRoadTexture() {
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, "#1a1a1a");
-    grad.addColorStop(1, "#0b0b0b");
+    grad.addColorStop(1, "#0b0b0b"); // FIXED
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
@@ -407,7 +395,7 @@
     ctx.globalAlpha = 1;
 
     ctx.globalAlpha = 0.10;
-    for (let i = 0; i < 180; i++) {
+    for (let i = 0; i < 160; i++) {
       ctx.fillStyle = (Math.random() > 0.5) ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)";
       ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
     }
@@ -437,98 +425,156 @@
   }
 
   function drawPoliceLightCone(x, y, width, height) {
-    const blink = (frame % 6 < 3); // 2x faster blink
+    const blink = (frame % 6 < 3);
 
     ctx.save();
-    ctx.globalAlpha = blink ? 0.7 : 0.5;
+    ctx.globalAlpha = blink ? 0.75 : 0.55;
 
     const coneGrad = ctx.createRadialGradient(
       x + width/2, y + 20, 10,
-      x + width/2, y + 140, 180
+      x + width/2, y + 150, 200
     );
 
     if (blink) {
-      coneGrad.addColorStop(0, "rgba(0,150,255,0.85)");
-      coneGrad.addColorStop(0.45, "rgba(0,150,255,0.25)");
+      coneGrad.addColorStop(0, "rgba(0,150,255,0.95)");
+      coneGrad.addColorStop(0.45, "rgba(0,150,255,0.30)");
       coneGrad.addColorStop(1, "rgba(0,150,255,0)");
     } else {
-      coneGrad.addColorStop(0, "rgba(255,0,0,0.85)");
-      coneGrad.addColorStop(0.45, "rgba(255,0,0,0.25)");
+      coneGrad.addColorStop(0, "rgba(255,0,0,0.95)");
+      coneGrad.addColorStop(0.45, "rgba(255,0,0,0.30)");
       coneGrad.addColorStop(1, "rgba(255,0,0,0)");
     }
 
     ctx.fillStyle = coneGrad;
-    roundRect(x - 60, y + 10, width + 120, height + 260, 120, true);
+    ctx.beginPath();
+    ctx.ellipse(x + width/2, y + 170, width * 2.0, height * 2.0, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   }
 
-  function drawCar(x, y, width, height, colorTop, colorBottom, angle=0, label=null, siren=false) {
+  function drawCarModel(x, y, width, height, topColor, bottomColor, angle, label, siren) {
     ctx.save();
     ctx.translate(x + width/2, y + height/2);
     ctx.rotate(angle);
 
-    const grad = ctx.createLinearGradient(0, -height/2, 0, height/2);
-    grad.addColorStop(0, colorTop);
-    grad.addColorStop(1, colorBottom);
+    const topW = width * 0.82;
+    const bottomW = width;
 
-    ctx.fillStyle = grad;
-    roundRect(-width/2, -height/2, width, height, 16, true);
+    const bodyGrad = ctx.createLinearGradient(0, -height/2, 0, height/2);
+    bodyGrad.addColorStop(0, topColor);
+    bodyGrad.addColorStop(1, bottomColor);
 
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    roundRect(-width/2, -height/2, width, height * 0.5, 16, true);
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.moveTo(-topW/2, -height/2);
+    ctx.lineTo(topW/2, -height/2);
+    ctx.lineTo(bottomW/2, height/2);
+    ctx.lineTo(-bottomW/2, height/2);
+    ctx.closePath();
+    ctx.fill();
 
-    ctx.fillStyle = "rgba(255,255,255,0.15)";
-    roundRect(-7, -height/2, 14, height, 10, true);
+    ctx.globalAlpha = 0.20;
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.moveTo(-topW/2 + 6, -height/2 + 5);
+    ctx.lineTo(-topW/2 + 18, -height/2 + 5);
+    ctx.lineTo(-bottomW/2 + 30, height/2 - 10);
+    ctx.lineTo(-bottomW/2 + 18, height/2 - 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
-    ctx.fillStyle = "#111";
-    roundRect(-width/2 + 10, -height/2 + 12, width - 20, 30, 8, true);
+    ctx.fillStyle = "rgba(20,20,20,0.8)";
+    ctx.beginPath();
+    ctx.moveTo(-topW/2 + 8, -height/2 + 12);
+    ctx.lineTo(topW/2 - 8, -height/2 + 12);
+    ctx.lineTo(topW/2 - 18, -height/2 + 40);
+    ctx.lineTo(-topW/2 + 18, -height/2 + 40);
+    ctx.closePath();
+    ctx.fill();
 
-    ctx.fillStyle = "rgba(255,200,0,0.85)";
-    roundRect(-width/2 + 8, height/2 - 24, width - 16, 14, 7, true);
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = "rgba(15,15,15,0.8)";
+    ctx.beginPath();
+    ctx.moveTo(-bottomW/2 + 14, height/2 - 42);
+    ctx.lineTo(bottomW/2 - 14, height/2 - 42);
+    ctx.lineTo(bottomW/2 - 24, height/2 - 12);
+    ctx.lineTo(-bottomW/2 + 24, height/2 - 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(-width/2 - 5, -height/2 + 18, 10, 22);
-    ctx.fillRect(-width/2 - 5, height/2 - 40, 10, 22);
-    ctx.fillRect(width/2 - 5, -height/2 + 18, 10, 22);
-    ctx.fillRect(width/2 - 5, height/2 - 40, 10, 22);
+    function wheel(wx, wy) {
+      ctx.fillStyle = "#000";
+      ctx.beginPath();
+      ctx.arc(wx, wy, 10, 0, Math.PI*2);
+      ctx.fill();
 
-    if (label) {
-      ctx.fillStyle = "rgba(255,255,255,0.95)";
-      ctx.font = "bold 10px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(label, 0, 5);
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.beginPath();
+      ctx.arc(wx, wy, 4, 0, Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
+
+    wheel(-bottomW/2 - 3, -height/2 + 30);
+    wheel(bottomW/2 + 3, -height/2 + 30);
+    wheel(-bottomW/2 - 3, height/2 - 30);
+    wheel(bottomW/2 + 3, height/2 - 30);
+
+    ctx.fillStyle = "rgba(255,255,200,0.9)";
+    ctx.fillRect(-topW/2 + 6, -height/2 + 2, 12, 6);
+    ctx.fillRect(topW/2 - 18, -height/2 + 2, 12, 6);
+
+    ctx.fillStyle = "rgba(255,0,0,0.9)";
+    ctx.fillRect(-bottomW/2 + 6, height/2 - 8, 14, 6);
+    ctx.fillRect(bottomW/2 - 20, height/2 - 8, 14, 6);
 
     if (siren) {
       const blink = (frame % 6 < 3);
 
-      ctx.fillStyle = blink ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
-      roundRect(-18, -height/2 + 4, 36, 10, 6, true);
+      ctx.fillStyle = "rgba(0,0,0,0.8)";
+      ctx.fillRect(-18, -height/2 + 6, 36, 10);
 
-      ctx.globalAlpha = blink ? 0.45 : 0.4;
       ctx.fillStyle = blink ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
-      roundRect(-70, -height/2 + 0, 140, 36, 20, true);
+      ctx.fillRect(-18, -height/2 + 6, 18, 10);
+      ctx.fillRect(0, -height/2 + 6, 18, 10);
+
+      ctx.globalAlpha = blink ? 0.45 : 0.35;
+      ctx.fillStyle = blink ? "rgba(0,150,255,1)" : "rgba(255,0,0,1)";
+      ctx.beginPath();
+      ctx.arc(0, -height/2 + 10, 55, 0, Math.PI*2);
+      ctx.fill();
       ctx.globalAlpha = 1;
+    }
+
+    if (label) {
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.font = "bold 10px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(label, 0, 5);
     }
 
     ctx.restore();
   }
 
   function drawPlayer() {
-    drawCar(player.x, player.y, player.width, player.height, "#ff1a1a", "#9c0000", player.angle, "ROADSTER", false);
+    drawCarModel(player.x, player.y, player.width, player.height,
+      "#ff2b2b", "#7a0000", player.angle, "ROADSTER", false);
   }
 
   function drawEnemies() {
     enemies.forEach(e => {
       if (e.type === "police") drawPoliceLightCone(e.x, e.y, e.width, e.height);
 
-      if (e.type === "sedan") drawCar(e.x, e.y, e.width, e.height, "#999", "#333", e.angle);
-      if (e.type === "sport") drawCar(e.x, e.y, e.width, e.height, "#00c6ff", "#003cff", e.angle);
-      if (e.type === "taxi") drawCar(e.x, e.y, e.width, e.height, "#ffcc00", "#c48d00", e.angle, "TAXI");
-      if (e.type === "van") drawCar(e.x, e.y, e.width, e.height, "#fff", "#aaa", e.angle);
-      if (e.type === "truck") drawCar(e.x, e.y, e.width, e.height, "#666", "#222", e.angle);
-      if (e.type === "police") drawCar(e.x, e.y, e.width, e.height, "#0c0c0c", "#222", e.angle, "POLICE", true);
+      if (e.type === "sedan") drawCarModel(e.x, e.y, e.width, e.height, "#aaaaaa", "#444444", e.angle, null, false);
+      if (e.type === "sport") drawCarModel(e.x, e.y, e.width, e.height, "#00d4ff", "#002bff", e.angle, null, false);
+      if (e.type === "taxi") drawCarModel(e.x, e.y, e.width, e.height, "#ffcc00", "#b88600", e.angle, "TAXI", false);
+      if (e.type === "van") drawCarModel(e.x, e.y, e.width, e.height, "#ffffff", "#aaaaaa", e.angle, null, false);
+      if (e.type === "truck") drawCarModel(e.x, e.y, e.width, e.height, "#666666", "#222222", e.angle, null, false);
+      if (e.type === "police") drawCarModel(e.x, e.y, e.width, e.height, "#111111", "#333333", e.angle, "POLICE", true);
     });
   }
 
@@ -707,7 +753,6 @@
     crashed = true;
     timeScale = 0.12;
     player.spinVel = 0.35;
-
     camShake = 18;
 
     enemy.crashed = true;
@@ -812,7 +857,6 @@
   function loop() {
     ctx.save();
 
-    // CAMERA SHAKE
     if (camShake > 0) {
       const dx = rand(-camShake, camShake) * 0.2;
       const dy = rand(-camShake, camShake) * 0.2;
@@ -827,10 +871,6 @@
       updatePlayer();
       updateEnemies();
 
-      updateExplosions();
-      updateSparks();
-      updateSmoke();
-
       if (!crashed && frame % 70 === 0) spawnEnemy();
 
       if (!crashed && frame % 260 === 0) {
@@ -842,12 +882,8 @@
     drawRoadTexture();
     drawEnemies();
     drawPlayer();
-    drawSmoke();
-    drawExplosions();
-    drawSparks();
 
     ctx.restore();
-
     requestAnimationFrame(loop);
   }
 
