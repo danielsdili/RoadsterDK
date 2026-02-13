@@ -1,11 +1,9 @@
-Roadster 2.0
-
 <!DOCTYPE html>
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER - Burnout Canvas Edition</title>
+  <title>ROADSTER 2.1 - Burnout Canvas Edition</title>
 
   <style>
     body {
@@ -136,6 +134,18 @@ Roadster 2.0
       flex: 1.3;
       font-size: 20px;
       letter-spacing: 2px;
+    }
+
+    /* PAUSE BUTTON */
+    #pauseBtn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 13px;
+      cursor: pointer;
+      background: gold;
+      font-weight: bold;
+      box-shadow: 0 0 10px rgba(255,215,0,0.3);
     }
 
     /* INTRO SCREEN */
@@ -291,12 +301,14 @@ Roadster 2.0
 <div id="hud">
   <div id="hudLeft">
     <div>Skóre: <span id="score">0</span></div>
+    <div>Rekord: <span id="highScore">0</span></div>
     <div id="shieldStatus">🛡️ Shield: OFF</div>
   </div>
 
   <div id="hudRight">
     <div>Rychlost: <span id="speed">1</span>x</div>
     <div id="nitroBarWrap"><div id="nitroBar"></div></div>
+    <button id="pauseBtn">⏸ PAUSE</button>
   </div>
 </div>
 
@@ -332,6 +344,7 @@ Roadster 2.0
   const speedEl = document.getElementById("speed");
   const nitroBar = document.getElementById("nitroBar");
   const shieldStatus = document.getElementById("shieldStatus");
+  const highScoreEl = document.getElementById("highScore");
 
   const gameOverScreen = document.getElementById("gameOver");
   const finalScoreEl = document.getElementById("finalScore");
@@ -342,6 +355,8 @@ Roadster 2.0
   const leftBtn = document.getElementById("leftBtn");
   const rightBtn = document.getElementById("rightBtn");
   const nitroBtn = document.getElementById("nitroBtn");
+
+  const pauseBtn = document.getElementById("pauseBtn");
 
   let w, h;
 
@@ -364,6 +379,7 @@ Roadster 2.0
 
   let running = false;
   let crashed = false;
+  let paused = false;
   let timeScale = 1;
 
   let holdingLeft = false;
@@ -381,6 +397,10 @@ Roadster 2.0
   let nitroCooldown = 0;
 
   const NITRO_MAX = 120;
+
+  // HIGH SCORE
+  let highScore = parseInt(localStorage.getItem("roadsterHighScore") || "0");
+  highScoreEl.textContent = highScore;
 
   // POWERUPS
   let powerUps = [];
@@ -441,7 +461,6 @@ Roadster 2.0
     });
   }
 
-  // POWERUP SPAWN
   function spawnPowerUp() {
     const types = ["nitro", "shield", "coin"];
     const type = types[Math.floor(Math.random() * types.length)];
@@ -455,21 +474,62 @@ Roadster 2.0
     });
   }
 
+  function checkCircleRectCollision(circle, rect) {
+    const cx = circle.x + circle.size/2;
+    const cy = circle.y + circle.size/2;
+
+    const rx = rect.x;
+    const ry = rect.y;
+    const rw = rect.width;
+    const rh = rect.height;
+
+    const closestX = Math.max(rx, Math.min(cx, rx + rw));
+    const closestY = Math.max(ry, Math.min(cy, ry + rh));
+
+    const dx = cx - closestX;
+    const dy = cy - closestY;
+
+    return (dx*dx + dy*dy) < (circle.size/2)*(circle.size/2);
+  }
+
+  function activatePowerUp(type) {
+    if (type === "coin") {
+      score += 150;
+      scoreEl.textContent = score;
+    }
+
+    if (type === "shield") {
+      shieldActive = true;
+      shieldCooldown = 0;
+      shieldStatus.textContent = "🛡️ Shield: ON";
+    }
+
+    if (type === "nitro") {
+      nitroCooldown = 0;
+      nitroTime = NITRO_MAX;
+      nitroActive = true;
+      canvas.classList.add("nitroZoom");
+      camShake = 10;
+    }
+  }
+
   function updatePowerUps() {
-    powerUps.forEach((p, idx) => {
+    for (let i = powerUps.length - 1; i >= 0; i--) {
+      const p = powerUps[i];
+
       p.y += (speed + 1.2) * timeScale;
       p.life -= 1 * timeScale;
 
       if (p.life <= 0 || p.y > h + 100) {
-        powerUps.splice(idx, 1);
-        return;
+        powerUps.splice(i, 1);
+        continue;
       }
 
       if (!crashed && checkCircleRectCollision(p, player)) {
         activatePowerUp(p.type);
-        powerUps.splice(idx, 1);
+        powerUps.splice(i, 1);
       }
-    });
+    }
   }
 
   function drawPowerUps() {
@@ -506,45 +566,6 @@ Roadster 2.0
 
       ctx.restore();
     });
-  }
-
-  function activatePowerUp(type) {
-    if (type === "coin") {
-      score += 150;
-      scoreEl.textContent = score;
-    }
-
-    if (type === "shield") {
-      shieldActive = true;
-      shieldCooldown = 0;
-      shieldStatus.textContent = "🛡️ Shield: ON";
-    }
-
-    if (type === "nitro") {
-      nitroCooldown = 0;
-      nitroTime = NITRO_MAX;
-      nitroActive = true;
-      canvas.classList.add("nitroZoom");
-      camShake = 10;
-    }
-  }
-
-  function checkCircleRectCollision(circle, rect) {
-    const cx = circle.x + circle.size/2;
-    const cy = circle.y + circle.size/2;
-
-    const rx = rect.x;
-    const ry = rect.y;
-    const rw = rect.width;
-    const rh = rect.height;
-
-    const closestX = Math.max(rx, Math.min(cx, rx + rw));
-    const closestY = Math.max(ry, Math.min(cy, ry + rh));
-
-    const dx = cx - closestX;
-    const dy = cy - closestY;
-
-    return (dx*dx + dy*dy) < (circle.size/2)*(circle.size/2);
   }
 
   function updateRoad() {
@@ -585,7 +606,6 @@ Roadster 2.0
     });
   }
 
-  // 🚓 POLICE LIGHT CONE
   function drawPoliceLightCone(x, y, width, height) {
     const blink = (frame % 18 < 9);
 
@@ -627,13 +647,14 @@ Roadster 2.0
   }
 
   function updateTireDust() {
-    tireDust.forEach((t, idx) => {
+    for (let i = tireDust.length - 1; i >= 0; i--) {
+      const t = tireDust[i];
       t.life -= 1 * timeScale;
       t.x += t.vx * timeScale;
       t.y += t.vy * timeScale;
       t.size += 0.24 * timeScale;
-      if (t.life <= 0) tireDust.splice(idx, 1);
-    });
+      if (t.life <= 0) tireDust.splice(i, 1);
+    }
   }
 
   function drawTireDust() {
@@ -647,7 +668,6 @@ Roadster 2.0
     });
   }
 
-  // ⭐ NEW SKID MARKS (REALISTIC)
   function spawnSkidMark(x, y, strength) {
     skidMarks.push({
       x,
@@ -661,10 +681,10 @@ Roadster 2.0
   }
 
   function updateSkidMarks() {
-    skidMarks.forEach((m, idx) => {
-      m.life -= 1 * timeScale;
-      if (m.life <= 0) skidMarks.splice(idx, 1);
-    });
+    for (let i = skidMarks.length - 1; i >= 0; i--) {
+      skidMarks[i].life -= 1 * timeScale;
+      if (skidMarks[i].life <= 0) skidMarks.splice(i, 1);
+    }
   }
 
   function drawSkidMarks() {
@@ -697,11 +717,12 @@ Roadster 2.0
   }
 
   function updateSpeedLines() {
-    speedLines.forEach((s, idx) => {
+    for (let i = speedLines.length - 1; i >= 0; i--) {
+      const s = speedLines[i];
       s.life -= 1 * timeScale;
       s.y += speed * 2.8 * timeScale;
-      if (s.life <= 0) speedLines.splice(idx, 1);
-    });
+      if (s.life <= 0) speedLines.splice(i, 1);
+    }
   }
 
   function drawSpeedLines() {
@@ -742,7 +763,6 @@ Roadster 2.0
     }
   }
 
-  // ⭐ NEW: NITRO VIGNETTE
   function drawNitroVignette() {
     if (!nitroActive || crashed) return;
 
@@ -809,7 +829,6 @@ Roadster 2.0
     ctx.closePath();
     ctx.fill();
 
-    // ⭐ GLOSSY PAINT HIGHLIGHT
     ctx.globalAlpha = 0.18;
     ctx.fillStyle = "white";
     ctx.beginPath();
@@ -841,7 +860,6 @@ Roadster 2.0
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // wheels
     const blinkRate = Math.max(6, Math.floor(26 - (speed * 1.25)));
     const blinkWheel = (frame % blinkRate < blinkRate / 2);
 
@@ -874,7 +892,6 @@ Roadster 2.0
       ctx.globalAlpha = 1;
     }
 
-    // lights
     ctx.fillStyle = "rgba(255,255,200,0.9)";
     ctx.fillRect(-topW/2 + 6, -height/2 + 2, 12, 6);
     ctx.fillRect(topW/2 - 18, -height/2 + 2, 12, 6);
@@ -970,28 +987,6 @@ Roadster 2.0
     }
   }
 
-  function updateEnemies() {
-    enemies.forEach((e, idx) => {
-      if (!e.crashed) {
-        e.y += (speed + 1.2) * timeScale;
-        e.x += e.vx * timeScale;
-      } else {
-        e.y += (speed + 2.5) * timeScale;
-        e.x += e.vx * 4 * timeScale;
-        e.angle += e.spinVel * timeScale;
-        e.spinVel *= 0.985;
-      }
-
-      if (e.y > h + 300) {
-        enemies.splice(idx, 1);
-        score += 10;
-        scoreEl.textContent = score;
-      }
-
-      if (!crashed && shieldCooldown <= 0 && checkCollision(player, e)) crash(e);
-    });
-  }
-
   function checkCollision(a, b) {
     return !(
       a.x > b.x + b.width ||
@@ -1001,131 +996,6 @@ Roadster 2.0
     );
   }
 
-  // ⭐ UPDATED EXPLOSION WITH SHOCKWAVE
-  function spawnExplosion(x, y) {
-    explosions.push({ x, y, radius: 10, life: 70, shock: 0 });
-  }
-
-  function spawnSparks(x, y) {
-    for (let i = 0; i < 110; i++) {
-      sparks.push({
-        x, y,
-        vx: rand(-35, 35),
-        vy: rand(-35, 35),
-        life: rand(70, 140),
-        size: rand(4, 14),
-        color: ["orange", "yellow", "#ff6600", "#ffaa00", "#ffffff"][Math.floor(Math.random()*5)]
-      });
-    }
-  }
-
-  function spawnSmoke(x, y) {
-    for (let i = 0; i < 22; i++) {
-      smokes.push({
-        x: x + rand(-50, 50),
-        y: y + rand(-50, 50),
-        vy: rand(-1.2, -3.8),
-        life: rand(150, 260),
-        size: rand(35, 80)
-      });
-    }
-  }
-
-  function drawExplosions() {
-    explosions.forEach(ex => {
-      ctx.save();
-
-      // shockwave ring
-      ctx.globalAlpha = Math.max(ex.life / 70, 0) * 0.55;
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(ex.x, ex.y, ex.shock * 2.2, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.globalAlpha = Math.max(ex.life / 70, 0) * 0.8;
-      ctx.strokeStyle = "rgba(255,220,120,0.95)";
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.arc(ex.x, ex.y, ex.radius * 3.1, 0, Math.PI * 2);
-      ctx.stroke();
-
-      const g = ctx.createRadialGradient(ex.x, ex.y, 5, ex.x, ex.y, ex.radius * 7);
-      g.addColorStop(0, "rgba(255,255,230,1)");
-      g.addColorStop(0.25, "rgba(255,220,0,0.98)");
-      g.addColorStop(0.55, "rgba(255,60,0,0.85)");
-      g.addColorStop(1, "rgba(255,0,0,0)");
-
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(ex.x, ex.y, ex.radius * 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.restore();
-    });
-  }
-
-  function updateExplosions() {
-    explosions.forEach((ex, idx) => {
-      ex.life -= 1 * timeScale;
-      ex.radius += 2.1 * timeScale;
-      ex.shock += 6.5 * timeScale;
-      if (ex.life <= 0) explosions.splice(idx, 1);
-    });
-  }
-
-  function drawSparks() {
-    sparks.forEach(s => {
-      ctx.globalAlpha = Math.max(s.life / 140, 0);
-
-      ctx.fillStyle = s.color;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.globalAlpha *= 0.85;
-      ctx.strokeStyle = s.color;
-      ctx.lineWidth = 3.5;
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x - s.vx * 1.5, s.y - s.vy * 1.5);
-      ctx.stroke();
-
-      ctx.globalAlpha = 1;
-    });
-  }
-
-  function updateSparks() {
-    sparks.forEach((s, idx) => {
-      s.life -= 1 * timeScale;
-      s.x += s.vx * timeScale;
-      s.y += s.vy * timeScale;
-      s.vx *= 0.975;
-      s.vy *= 0.975;
-      if (s.life <= 0) sparks.splice(idx, 1);
-    });
-  }
-
-  function drawSmoke() {
-    smokes.forEach(s => {
-      ctx.globalAlpha = Math.max(s.life / 260, 0) * 0.65;
-      ctx.fillStyle = "rgba(120,120,120,0.95)";
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-  }
-
-  function updateSmoke() {
-    smokes.forEach((s, idx) => {
-      s.life -= 1 * timeScale;
-      s.y += s.vy * timeScale;
-      s.size += 0.45 * timeScale;
-      if (s.life <= 0) smokes.splice(idx, 1);
-    });
-  }
-
   function crash(enemy) {
     if (shieldActive && shieldCooldown <= 0) {
       shieldActive = false;
@@ -1133,12 +1003,6 @@ Roadster 2.0
       shieldStatus.textContent = "🛡️ Shield: OFF";
 
       camShake = 22;
-
-      const cx = player.x + player.width/2;
-      const cy = player.y + player.height/2;
-
-      spawnSparks(cx, cy);
-      spawnSmoke(cx, cy);
 
       enemy.crashed = true;
       enemy.spinVel = rand(0.35, 0.65);
@@ -1153,20 +1017,12 @@ Roadster 2.0
     player.spinVel = 0.38;
     camShake = 24;
 
-    // WHITE FLASH
     canvas.style.filter = "brightness(2.4)";
     setTimeout(() => canvas.style.filter = "", 120);
 
     enemy.crashed = true;
     enemy.spinVel = rand(0.30, 0.55);
     enemy.vx = rand(-2.8, 2.8);
-
-    const cx = player.x + player.width / 2;
-    const cy = player.y + player.height / 2;
-
-    spawnExplosion(cx, cy);
-    spawnSparks(cx, cy);
-    spawnSmoke(cx, cy);
 
     canvas.classList.add("zoomCrash");
     setTimeout(() => canvas.classList.remove("zoomCrash"), 800);
@@ -1177,63 +1033,30 @@ Roadster 2.0
     }, 5000);
   }
 
-  function endGame() {
-    running = false;
-    finalScoreEl.textContent = score;
-    gameOverScreen.style.display = "flex";
+  function updateEnemies() {
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+
+      if (!e.crashed) {
+        e.y += (speed + 1.2) * timeScale;
+        e.x += e.vx * timeScale;
+      } else {
+        e.y += (speed + 2.5) * timeScale;
+        e.x += e.vx * 4 * timeScale;
+        e.angle += e.spinVel * timeScale;
+        e.spinVel *= 0.985;
+      }
+
+      if (e.y > h + 300) {
+        enemies.splice(i, 1);
+        score += 10;
+        scoreEl.textContent = score;
+        continue;
+      }
+
+      if (!crashed && shieldCooldown <= 0 && checkCollision(player, e)) crash(e);
+    }
   }
-
-  function restartGame() {
-    score = 0;
-    baseSpeed = 5;
-    speed = baseSpeed;
-    frame = 0;
-    crashed = false;
-    timeScale = 1;
-
-    nitroActive = false;
-    nitroTime = 0;
-    nitroCooldown = 0;
-
-    shieldActive = false;
-    shieldCooldown = 0;
-    shieldStatus.textContent = "🛡️ Shield: OFF";
-
-    enemies = [];
-    sparks = [];
-    smokes = [];
-    explosions = [];
-    tireDust = [];
-    skidMarks = [];
-    speedLines = [];
-    powerUps = [];
-
-    scoreEl.textContent = score;
-    speedEl.textContent = "1";
-    nitroBar.style.width = "0%";
-
-    player.x = w / 2 - player.width/2;
-    player.targetX = player.x;
-    player.y = h - 140;
-    player.angle = 0;
-    player.spinVel = 0;
-
-    gameOverScreen.style.display = "none";
-    running = true;
-  }
-
-  window.restartGame = restartGame;
-
-  startBtn.addEventListener("click", () => {
-    startScreen.style.display = "none";
-    setTimeout(() => { running = true; }, 300);
-  });
-
-  leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
-  leftBtn.addEventListener("touchend", () => holdingLeft = false);
-
-  rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingRight = true; });
-  rightBtn.addEventListener("touchend", () => holdingRight = false);
 
   function activateNitro() {
     if (crashed) return;
@@ -1248,13 +1071,6 @@ Roadster 2.0
     canvas.classList.add("nitroZoom");
     camShake = 10;
   }
-
-  nitroBtn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    activateNitro();
-  });
-
-  nitroBtn.addEventListener("mousedown", activateNitro);
 
   function updateNitro() {
     if (nitroCooldown > 0) nitroCooldown -= 1 * timeScale;
@@ -1277,8 +1093,93 @@ Roadster 2.0
     nitroBar.style.width = (pct * 100) + "%";
   }
 
+  function endGame() {
+    running = false;
+
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("roadsterHighScore", highScore);
+      highScoreEl.textContent = highScore;
+    }
+
+    finalScoreEl.textContent = score;
+    gameOverScreen.style.display = "flex";
+  }
+
+  function restartGame() {
+    score = 0;
+    baseSpeed = 5;
+    speed = baseSpeed;
+    frame = 0;
+    crashed = false;
+    paused = false;
+    timeScale = 1;
+
+    nitroActive = false;
+    nitroTime = 0;
+    nitroCooldown = 0;
+
+    shieldActive = false;
+    shieldCooldown = 0;
+    shieldStatus.textContent = "🛡️ Shield: OFF";
+
+    enemies = [];
+    tireDust = [];
+    skidMarks = [];
+    speedLines = [];
+    powerUps = [];
+
+    scoreEl.textContent = score;
+    speedEl.textContent = "1";
+    nitroBar.style.width = "0%";
+
+    player.x = w / 2 - player.width/2;
+    player.targetX = player.x;
+    player.y = h - 140;
+    player.angle = 0;
+    player.spinVel = 0;
+
+    gameOverScreen.style.display = "none";
+    pauseBtn.textContent = "⏸ PAUSE";
+    running = true;
+  }
+
+  window.restartGame = restartGame;
+
+  startBtn.addEventListener("click", () => {
+    startScreen.style.display = "none";
+    setTimeout(() => { running = true; }, 300);
+  });
+
+  pauseBtn.addEventListener("click", () => {
+    if (!running || crashed) return;
+
+    paused = !paused;
+
+    if (paused) {
+      timeScale = 0;
+      pauseBtn.textContent = "▶ RESUME";
+    } else {
+      timeScale = 1;
+      pauseBtn.textContent = "⏸ PAUSE";
+    }
+  });
+
+  leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
+  leftBtn.addEventListener("touchend", () => holdingLeft = false);
+
+  rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingRight = true; });
+  rightBtn.addEventListener("touchend", () => holdingRight = false);
+
+  nitroBtn.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    activateNitro();
+  });
+
+  nitroBtn.addEventListener("mousedown", activateNitro);
+
   function loop() {
-    if (running) {
+    if (running && timeScale > 0) {
       frame++;
 
       if (shieldCooldown > 0) shieldCooldown -= 1 * timeScale;
@@ -1289,9 +1190,6 @@ Roadster 2.0
       updateEnemies();
       updatePowerUps();
 
-      updateExplosions();
-      updateSparks();
-      updateSmoke();
       updateTireDust();
       updateSkidMarks();
       updateSpeedLines();
@@ -1305,43 +1203,15 @@ Roadster 2.0
       }
     }
 
-    if (camShake > 0) {
-      ctx.save();
-      const sx = rand(-camShake, camShake);
-      const sy = rand(-camShake, camShake);
-      ctx.translate(sx, sy);
-      camShake *= 0.92;
-
-      drawRoadTexture();
-      drawSkidMarks();
-      drawTireDust();
-      drawPowerUps();
-      drawEnemies();
-      drawNitroFlames();
-      drawPlayer();
-      drawShieldEffect();
-      drawSmoke();
-      drawExplosions();
-      drawSparks();
-      drawSpeedLines();
-
-      ctx.restore();
-    } else {
-      drawRoadTexture();
-      drawSkidMarks();
-      drawTireDust();
-      drawPowerUps();
-      drawEnemies();
-      drawNitroFlames();
-      drawPlayer();
-      drawShieldEffect();
-      drawSmoke();
-      drawExplosions();
-      drawSparks();
-      drawSpeedLines();
-    }
-
-    // NITRO VIGNETTE LAST
+    drawRoadTexture();
+    drawSkidMarks();
+    drawTireDust();
+    drawPowerUps();
+    drawEnemies();
+    drawNitroFlames();
+    drawPlayer();
+    drawShieldEffect();
+    drawSpeedLines();
     drawNitroVignette();
 
     requestAnimationFrame(loop);
