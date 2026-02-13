@@ -203,26 +203,6 @@
       animation-delay: 3.6s;
     }
 
-    #introFlash {
-      position: absolute;
-      inset: 0;
-      background: rgba(255,255,255,0.95);
-      opacity: 0;
-      pointer-events: none;
-      z-index: 1000;
-    }
-
-    .flashAnim {
-      animation: flashBang 0.4s ease forwards;
-      animation-delay: 2.1s;
-    }
-
-    @keyframes flashBang {
-      0% { opacity: 0; }
-      30% { opacity: 1; }
-      100% { opacity: 0; }
-    }
-
     @keyframes introFade {
       0% { opacity: 0; transform: translateY(20px); }
       100% { opacity: 1; transform: translateY(0px); }
@@ -300,7 +280,6 @@
   <canvas id="game"></canvas>
 
   <div id="startScreen">
-    <div id="introFlash" class="flashAnim"></div>
     <div id="introText">DANIEL_SDILI UVÁDÍ:</div>
     <div id="mainLogo">ROADSTER</div>
     <div id="subText">Burnout Night Edition</div>
@@ -367,28 +346,21 @@
 
   let camShake = 0;
 
-  // CAMERA TILT (D)
   let camTilt = 0;
   let targetTilt = 0;
 
-  // DEBRIS (C)
   let debris = [];
-
-  // BILLBOARDS (B)
   let billboards = [];
 
-  // SHIELD
   let shieldActive = false;
   let shieldCooldown = 0;
 
-  // NITRO SYSTEM
   let nitroActive = false;
   let nitroTime = 0;
   let nitroCooldown = 0;
 
   const NITRO_MAX = 120;
 
-  // POWERUPS
   let powerUps = [];
 
   const player = {
@@ -452,7 +424,7 @@
     const text = texts[Math.floor(Math.random() * texts.length)];
 
     const side = Math.random() > 0.5 ? "left" : "right";
-    const x = side === "left" ? 8 : w - 130;
+    const x = side === "left" ? 8 : w - 128;
 
     billboards.push({
       x,
@@ -460,7 +432,6 @@
       width: 120,
       height: 55,
       text,
-      side,
       glow: rand(0.6, 1.0),
       life: 1000
     });
@@ -556,111 +527,6 @@
     });
   }
 
-  function spawnPowerUp() {
-    const types = ["nitro", "shield", "coin"];
-    const type = types[Math.floor(Math.random() * types.length)];
-
-    powerUps.push({
-      type,
-      x: rand(40, w - 80),
-      y: -120,
-      size: 34,
-      life: 900
-    });
-  }
-
-  function updatePowerUps() {
-    powerUps.forEach((p, idx) => {
-      p.y += (speed + 1.2) * timeScale;
-      p.life -= 1 * timeScale;
-
-      if (p.life <= 0 || p.y > h + 100) {
-        powerUps.splice(idx, 1);
-        return;
-      }
-
-      if (!crashed && checkCircleRectCollision(p, player)) {
-        activatePowerUp(p.type);
-        powerUps.splice(idx, 1);
-      }
-    });
-  }
-
-  function drawPowerUps() {
-    powerUps.forEach(p => {
-      ctx.save();
-      ctx.globalAlpha = 0.95;
-
-      const pulse = 0.5 + Math.sin(frame * 0.15) * 0.25;
-
-      let color = "white";
-      let label = "?";
-
-      if (p.type === "nitro") { color = "#00ccff"; label = "⚡"; }
-      if (p.type === "shield") { color = "#66ccff"; label = "🛡️"; }
-      if (p.type === "coin") { color = "#ffd500"; label = "💰"; }
-
-      ctx.globalAlpha = 0.25 + pulse;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size * 0.9, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(0,0,0,0.85)";
-      ctx.beginPath();
-      ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size * 0.55, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.font = "bold 22px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "white";
-      ctx.fillText(label, p.x + p.size/2, p.y + p.size/2);
-
-      ctx.restore();
-    });
-  }
-
-  function activatePowerUp(type) {
-    if (type === "coin") {
-      score += 150;
-      scoreEl.textContent = score;
-    }
-
-    if (type === "shield") {
-      shieldActive = true;
-      shieldCooldown = 0;
-      shieldStatus.textContent = "🛡️ Shield: ON";
-    }
-
-    if (type === "nitro") {
-      nitroCooldown = 0;
-      nitroTime = NITRO_MAX;
-      nitroActive = true;
-      canvas.classList.add("nitroZoom");
-      camShake = 10;
-    }
-  }
-
-  function checkCircleRectCollision(circle, rect) {
-    const cx = circle.x + circle.size/2;
-    const cy = circle.y + circle.size/2;
-
-    const rx = rect.x;
-    const ry = rect.y;
-    const rw = rect.width;
-    const rh = rect.height;
-
-    const closestX = Math.max(rx, Math.min(cx, rx + rw));
-    const closestY = Math.max(ry, Math.min(cy, ry + rh));
-
-    const dx = cx - closestX;
-    const dy = cy - closestY;
-
-    return (dx*dx + dy*dy) < (circle.size/2)*(circle.size/2);
-  }
-
   function updateRoad() {
     laneLines.forEach(line => {
       line.y += speed * timeScale;
@@ -687,22 +553,10 @@
     ctx.fillRect(w/2 - 90, 0, 180, h);
     ctx.globalAlpha = 1;
 
-    ctx.globalAlpha = 0.22;
-    for (let i = 0; i < 12; i++) {
-      ctx.fillStyle = "rgba(0,0,0,0.9)";
-      ctx.fillRect(
-        rand(0, w),
-        (i * 120 + (frame * 2.2)) % (h + 240) - 240,
-        rand(40, 120),
-        rand(70, 140)
-      );
-    }
-    ctx.globalAlpha = 1;
-
     ctx.globalAlpha = 0.10;
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 200; i++) {
       ctx.fillStyle = (Math.random() > 0.5)
-        ? "rgba(255,255,255,0.18)"
+        ? "rgba(255,255,255,0.15)"
         : "rgba(0,0,0,0.35)";
       ctx.fillRect(rand(0, w), rand(0, h), 1, 1);
     }
@@ -722,356 +576,6 @@
     });
   }
 
-  function drawHeadlightCone(x, y, width, height) {
-    const cx = x + width / 2;
-    const cy = y + 20;
-
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-
-    const g = ctx.createRadialGradient(cx, cy, 10, cx, cy + 200, 250);
-    g.addColorStop(0, "rgba(255,255,220,0.9)");
-    g.addColorStop(0.35, "rgba(255,255,200,0.22)");
-    g.addColorStop(1, "rgba(255,255,200,0)");
-
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 170, width * 2.2, height * 2.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  function drawRearGlow(x, y, width, height) {
-    const cx = x + width / 2;
-    const cy = y + height - 10;
-
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-
-    const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, 120);
-    g.addColorStop(0, "rgba(255,40,40,0.9)");
-    g.addColorStop(0.4, "rgba(255,40,40,0.25)");
-    g.addColorStop(1, "rgba(255,40,40,0)");
-
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 15, width * 1.3, 70, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  function drawPoliceLightCone(x, y, width, height) {
-    const blink = (frame % 18 < 9);
-
-    ctx.save();
-    ctx.globalAlpha = blink ? 0.95 : 0.85;
-
-    const coneGrad = ctx.createRadialGradient(
-      x + width/2, y + 20, 10,
-      x + width/2, y + 150, 240
-    );
-
-    if (blink) {
-      coneGrad.addColorStop(0, "rgba(0,180,255,1)");
-      coneGrad.addColorStop(0.4, "rgba(0,180,255,0.45)");
-      coneGrad.addColorStop(1, "rgba(0,180,255,0)");
-    } else {
-      coneGrad.addColorStop(0, "rgba(255,40,40,1)");
-      coneGrad.addColorStop(0.4, "rgba(255,40,40,0.45)");
-      coneGrad.addColorStop(1, "rgba(255,40,40,0)");
-    }
-
-    ctx.fillStyle = coneGrad;
-    ctx.beginPath();
-    ctx.ellipse(x + width/2, y + 170, width * 2.4, height * 2.4, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  function spawnTireDust(x, y, strength) {
-    tireDust.push({
-      x: x + rand(-10, 10),
-      y: y + rand(-6, 6),
-      vx: rand(-1.4, 1.4),
-      vy: rand(2.2, 5.2),
-      life: rand(60, 110) * strength,
-      size: rand(10, 28) * strength
-    });
-  }
-
-  function updateTireDust() {
-    tireDust.forEach((t, idx) => {
-      t.life -= 1 * timeScale;
-      t.x += t.vx * timeScale;
-      t.y += t.vy * timeScale;
-      t.size += 0.24 * timeScale;
-      if (t.life <= 0) tireDust.splice(idx, 1);
-    });
-  }
-
-  function drawTireDust() {
-    tireDust.forEach(t => {
-      ctx.globalAlpha = Math.max(t.life / 110, 0) * 0.55;
-      ctx.fillStyle = "rgba(210,190,140,0.9)";
-      ctx.beginPath();
-      ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-  }
-
-  function spawnSkidMark(x, y, strength) {
-    skidMarks.push({
-      x,
-      y,
-      life: 220 * strength,
-      width: rand(2, 4),
-      length: rand(28, 65),
-      angle: rand(-0.25, 0.25),
-      alpha: rand(0.15, 0.35)
-    });
-  }
-
-  function updateSkidMarks() {
-    skidMarks.forEach((m, idx) => {
-      m.life -= 1 * timeScale;
-      if (m.life <= 0) skidMarks.splice(idx, 1);
-    });
-  }
-
-  function drawSkidMarks() {
-    skidMarks.forEach(m => {
-      ctx.save();
-      ctx.translate(m.x, m.y);
-      ctx.rotate(m.angle);
-
-      ctx.globalAlpha = Math.max(m.life / 220, 0) * m.alpha;
-      ctx.fillStyle = "rgba(0,0,0,0.95)";
-
-      ctx.fillRect(-m.width, 0, m.width, m.length);
-      ctx.fillRect(m.width + 2, 0, m.width, m.length);
-
-      ctx.restore();
-      ctx.globalAlpha = 1;
-    });
-  }
-
-  function spawnSpeedLines() {
-    for (let i = 0; i < 7; i++) {
-      speedLines.push({
-        x: rand(0, w),
-        y: rand(0, h),
-        len: rand(40, 150),
-        life: rand(18, 34),
-        width: rand(1, 3)
-      });
-    }
-  }
-
-  function updateSpeedLines() {
-    speedLines.forEach((s, idx) => {
-      s.life -= 1 * timeScale;
-      s.y += speed * 2.8 * timeScale;
-      if (s.life <= 0) speedLines.splice(idx, 1);
-    });
-  }
-
-  function drawSpeedLines() {
-    speedLines.forEach(s => {
-      ctx.globalAlpha = (s.life / 34) * 0.55;
-      ctx.strokeStyle = "rgba(255,255,255,0.9)";
-      ctx.lineWidth = s.width;
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x, s.y - s.len);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
-  }
-
-  function drawNitroFlames() {
-    if (!nitroActive || crashed) return;
-
-    const px = player.x + player.width/2;
-    const py = player.y + player.height;
-
-    for (let i = 0; i < 3; i++) {
-      const fx = px + rand(-12, 12);
-      const fy = py + rand(0, 14);
-
-      const g = ctx.createRadialGradient(fx, fy, 4, fx, fy, 45);
-      g.addColorStop(0, "rgba(255,255,255,1)");
-      g.addColorStop(0.25, "rgba(0,255,255,0.95)");
-      g.addColorStop(0.6, "rgba(0,120,255,0.75)");
-      g.addColorStop(1, "rgba(0,0,255,0)");
-
-      ctx.globalAlpha = 0.9;
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(fx, fy, 45, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  function drawShieldEffect() {
-    if (!shieldActive || crashed) return;
-
-    const cx = player.x + player.width/2;
-    const cy = player.y + player.height/2;
-
-    const pulse = 0.6 + Math.sin(frame * 0.2) * 0.25;
-
-    ctx.save();
-    ctx.globalAlpha = 0.25 + pulse * 0.2;
-    ctx.strokeStyle = "rgba(100,220,255,1)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, player.width * 0.75, player.height * 0.65, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.globalAlpha = 0.12;
-    ctx.fillStyle = "rgba(0,200,255,0.8)";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, player.width * 0.85, player.height * 0.75, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawCarModel(x, y, width, height, topColor, bottomColor, angle, label, siren) {
-    ctx.save();
-    ctx.translate(x + width/2, y + height/2);
-    ctx.rotate(angle);
-
-    const topW = width * 0.82;
-    const bottomW = width;
-
-    ctx.globalAlpha = 0.25;
-    ctx.fillStyle = "black";
-    ctx.beginPath();
-    ctx.ellipse(0, height/2 - 10, width * 0.6, 18, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    const bodyGrad = ctx.createLinearGradient(0, -height/2, 0, height/2);
-    bodyGrad.addColorStop(0, topColor);
-    bodyGrad.addColorStop(1, bottomColor);
-
-    ctx.fillStyle = bodyGrad;
-    ctx.beginPath();
-    ctx.moveTo(-topW/2, -height/2);
-    ctx.lineTo(topW/2, -height/2);
-    ctx.lineTo(bottomW/2, height/2);
-    ctx.lineTo(-bottomW/2, height/2);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.globalAlpha = 0.18;
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.moveTo(-topW/2 + 10, -height/2 + 8);
-    ctx.lineTo(0, -height/2 + 10);
-    ctx.lineTo(-bottomW/2 + 20, height/2 - 25);
-    ctx.lineTo(-bottomW/2 + 5, height/2 - 35);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    ctx.fillStyle = "rgba(20,20,20,0.85)";
-    ctx.beginPath();
-    ctx.moveTo(-topW/2 + 8, -height/2 + 14);
-    ctx.lineTo(topW/2 - 8, -height/2 + 14);
-    ctx.lineTo(topW/2 - 18, -height/2 + 42);
-    ctx.lineTo(-topW/2 + 18, -height/2 + 42);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = "rgba(15,15,15,0.85)";
-    ctx.beginPath();
-    ctx.moveTo(-bottomW/2 + 14, height/2 - 45);
-    ctx.lineTo(bottomW/2 - 14, height/2 - 45);
-    ctx.lineTo(bottomW/2 - 24, height/2 - 15);
-    ctx.lineTo(-bottomW/2 + 24, height/2 - 15);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    const blinkRate = Math.max(6, Math.floor(26 - (speed * 1.25)));
-    const blinkWheel = (frame % blinkRate < blinkRate / 2);
-
-    ctx.fillStyle = blinkWheel ? "#000000" : "#222222";
-
-    ctx.fillRect(-bottomW/2 - 2, -height/2 + 28, 10, 18);
-    ctx.fillRect(bottomW/2 - 8, -height/2 + 28, 10, 18);
-    ctx.fillRect(-bottomW/2 - 2, height/2 - 46, 10, 18);
-    ctx.fillRect(bottomW/2 - 8, height/2 - 46, 10, 18);
-
-    ctx.fillStyle = "rgba(255,255,200,0.9)";
-    ctx.fillRect(-topW/2 + 6, -height/2 + 2, 12, 6);
-    ctx.fillRect(topW/2 - 18, -height/2 + 2, 12, 6);
-
-    ctx.fillStyle = "rgba(255,0,0,0.9)";
-    ctx.fillRect(-bottomW/2 + 6, height/2 - 8, 14, 6);
-    ctx.fillRect(bottomW/2 - 20, height/2 - 8, 14, 6);
-
-    if (siren) {
-      const blink = (frame % 18 < 9);
-
-      ctx.fillStyle = "rgba(0,0,0,0.85)";
-      ctx.fillRect(-18, -height/2 + 6, 36, 10);
-
-      ctx.fillStyle = blink ? "rgba(0,170,255,1)" : "rgba(255,30,30,1)";
-      ctx.fillRect(-18, -height/2 + 6, 18, 10);
-      ctx.fillRect(0, -height/2 + 6, 18, 10);
-
-      ctx.globalAlpha = 0.75;
-      ctx.fillStyle = blink ? "rgba(0,170,255,1)" : "rgba(255,30,30,1)";
-      ctx.beginPath();
-      ctx.arc(0, -height/2 + 10, 50, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-
-    if (label) {
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      ctx.font = "bold 10px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(label, 0, 5);
-    }
-
-    ctx.restore();
-  }
-
-  function drawPlayer() {
-    drawCarModel(player.x, player.y, player.width, player.height,
-      "#ff2b2b", "#7a0000", player.angle, "ROADSTER", false);
-  }
-
-  function drawEnemies() {
-    enemies.forEach(e => {
-      drawHeadlightCone(e.x, e.y, e.width, e.height);
-      drawRearGlow(e.x, e.y, e.width, e.height);
-
-      if (e.type === "police") drawPoliceLightCone(e.x, e.y, e.width, e.height);
-
-      if (e.type === "sedan") drawCarModel(e.x, e.y, e.width, e.height, "#aaaaaa", "#444444", e.angle, null, false);
-      if (e.type === "sport") drawCarModel(e.x, e.y, e.width, e.height, "#00d4ff", "#002bff", e.angle, null, false);
-      if (e.type === "taxi") drawCarModel(e.x, e.y, e.width, e.height, "#ffcc00", "#b88600", e.angle, "TAXI", false);
-      if (e.type === "van") drawCarModel(e.x, e.y, e.width, e.height, "#ffffff", "#aaaaaa", e.angle, null, false);
-      if (e.type === "truck") drawCarModel(e.x, e.y, e.width, e.height, "#666666", "#222222", e.angle, null, false);
-      if (e.type === "police") drawCarModel(e.x, e.y, e.width, e.height, "#111111", "#333333", e.angle, "POLICE", true);
-    });
-  }
-
-  function drawPlayerLights() {
-    drawHeadlightCone(player.x, player.y, player.width, player.height);
-    drawRearGlow(player.x, player.y, player.width, player.height);
-  }
-
   function updatePlayer() {
     if (!running) return;
 
@@ -1088,279 +592,43 @@
 
     player.x += (player.targetX - player.x) * 0.25;
 
-    if (!crashed) {
-      player.angle = (player.targetX - player.x) * 0.003;
-    } else {
-      player.angle += player.spinVel * timeScale;
-      player.spinVel *= 0.985;
-    }
-
-    const driftStrength = Math.min(Math.abs(player.x - player.lastX) / 4, 2.5);
-
     targetTilt = (player.targetX - player.x) * 0.0007;
     camTilt += (targetTilt - camTilt) * 0.12;
-
-    if (!crashed) {
-      let dustPower = 0.8 + driftStrength;
-      if (nitroActive) dustPower *= 2.4;
-
-      if (frame % 3 === 0) {
-        spawnTireDust(player.x + 8, player.y + player.height - 20, dustPower);
-        spawnTireDust(player.x + player.width - 8, player.y + player.height - 20, dustPower);
-      }
-
-      if (driftStrength > 0.6 && frame % 4 === 0) {
-        spawnSkidMark(player.x + 10, player.y + player.height - 18, 1);
-        spawnSkidMark(player.x + player.width - 12, player.y + player.height - 18, 1);
-      }
-    }
   }
 
   function updateEnemies() {
     enemies.forEach((e, idx) => {
-      if (!e.crashed) {
-        e.y += (speed + 1.2) * timeScale;
-        e.x += e.vx * timeScale;
-      } else {
-        e.y += (speed + 2.5) * timeScale;
-        e.x += e.vx * 4 * timeScale;
-        e.angle += e.spinVel * timeScale;
-        e.spinVel *= 0.985;
-      }
+      e.y += (speed + 1.2) * timeScale;
+      e.x += e.vx * timeScale;
 
-      if (e.y > h + 300) {
-        enemies.splice(idx, 1);
-        score += 10;
-        scoreEl.textContent = score;
-      }
-
-      if (!crashed && shieldCooldown <= 0 && checkCollision(player, e)) crash(e);
+      if (e.y > h + 300) enemies.splice(idx, 1);
     });
   }
 
-  function checkCollision(a, b) {
-    return !(
-      a.x > b.x + b.width ||
-      a.x + a.width < b.x ||
-      a.y > b.y + b.height ||
-      a.y + a.height < b.y
-    );
+  function drawPlayer() {
+    ctx.fillStyle = "red";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
   }
 
-  function spawnExplosion(x, y) {
-    explosions.push({ x, y, radius: 10, life: 70, shock: 0 });
-  }
-
-  function spawnSparks(x, y) {
-    for (let i = 0; i < 110; i++) {
-      sparks.push({
-        x, y,
-        vx: rand(-35, 35),
-        vy: rand(-35, 35),
-        life: rand(70, 140),
-        size: rand(4, 14),
-        color: ["orange", "yellow", "#ff6600", "#ffaa00", "#ffffff"][Math.floor(Math.random()*5)]
-      });
-    }
-  }
-
-  function spawnSmoke(x, y) {
-    for (let i = 0; i < 22; i++) {
-      smokes.push({
-        x: x + rand(-50, 50),
-        y: y + rand(-50, 50),
-        vy: rand(-1.2, -3.8),
-        life: rand(150, 260),
-        size: rand(35, 80)
-      });
-    }
-  }
-
-  function crash(enemy) {
-    if (shieldActive && shieldCooldown <= 0) {
-      shieldActive = false;
-      shieldCooldown = 60;
-      shieldStatus.textContent = "🛡️ Shield: OFF";
-
-      camShake = 22;
-
-      const cx = player.x + player.width/2;
-      const cy = player.y + player.height/2;
-
-      spawnSparks(cx, cy);
-      spawnSmoke(cx, cy);
-
-      enemy.crashed = true;
-      enemy.spinVel = rand(0.35, 0.65);
-      enemy.vx = rand(-4.5, 4.5);
-
-      player.targetX += rand(-80, 80);
-      return;
-    }
-
-    crashed = true;
-    timeScale = 0.07;
-    player.spinVel = 0.38;
-    camShake = 24;
-
-    canvas.style.filter = "brightness(2.4)";
-    setTimeout(() => canvas.style.filter = "", 120);
-
-    enemy.crashed = true;
-    enemy.spinVel = rand(0.30, 0.55);
-    enemy.vx = rand(-2.8, 2.8);
-
-    const cx = player.x + player.width / 2;
-    const cy = player.y + player.height / 2;
-
-    spawnExplosion(cx, cy);
-    spawnSparks(cx, cy);
-    spawnSmoke(cx, cy);
-    spawnDebris(cx, cy);
-
-    canvas.classList.add("zoomCrash");
-    setTimeout(() => canvas.classList.remove("zoomCrash"), 800);
-
-    setTimeout(() => {
-      timeScale = 0;
-      endGame();
-    }, 5000);
-  }
-
-  function endGame() {
-    running = false;
-    finalScoreEl.textContent = score;
-    gameOverScreen.style.display = "flex";
-  }
-
-  function restartGame() {
-    score = 0;
-    baseSpeed = 5;
-    speed = baseSpeed;
-    frame = 0;
-    crashed = false;
-    timeScale = 1;
-
-    nitroActive = false;
-    nitroTime = 0;
-    nitroCooldown = 0;
-
-    shieldActive = false;
-    shieldCooldown = 0;
-    shieldStatus.textContent = "🛡️ Shield: OFF";
-
-    enemies = [];
-    sparks = [];
-    smokes = [];
-    explosions = [];
-    tireDust = [];
-    skidMarks = [];
-    speedLines = [];
-    powerUps = [];
-    debris = [];
-    billboards = [];
-
-    camTilt = 0;
-    targetTilt = 0;
-
-    scoreEl.textContent = score;
-    speedEl.textContent = "1";
-    nitroBar.style.width = "0%";
-
-    player.x = w / 2 - player.width/2;
-    player.targetX = player.x;
-    player.y = h - 140;
-    player.angle = 0;
-    player.spinVel = 0;
-
-    gameOverScreen.style.display = "none";
-    running = true;
-  }
-
-  window.restartGame = restartGame;
-
-  startBtn.addEventListener("click", () => {
-    startScreen.style.display = "none";
-    setTimeout(() => { running = true; }, 300);
-  });
-
-  leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
-  leftBtn.addEventListener("touchend", () => holdingLeft = false);
-
-  rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingRight = true; });
-  rightBtn.addEventListener("touchend", () => holdingRight = false);
-
-  function activateNitro() {
-    if (crashed) return;
-    if (!running) return;
-    if (nitroCooldown > 0) return;
-    if (nitroActive) return;
-
-    nitroActive = true;
-    nitroTime = NITRO_MAX;
-    nitroCooldown = 240;
-
-    canvas.classList.add("nitroZoom");
-    camShake = 10;
-  }
-
-  nitroBtn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    activateNitro();
-  });
-
-  nitroBtn.addEventListener("mousedown", activateNitro);
-
-  function updateNitro() {
-    if (nitroCooldown > 0) nitroCooldown -= 1 * timeScale;
-
-    if (nitroActive) {
-      nitroTime -= 1 * timeScale;
-      speed = baseSpeed * 1.85;
-      spawnSpeedLines();
-
-      if (nitroTime <= 0) {
-        nitroActive = false;
-        speed = baseSpeed;
-        canvas.classList.remove("nitroZoom");
-      }
-    } else {
-      speed = baseSpeed;
-    }
-
-    const pct = Math.max(0, nitroTime / NITRO_MAX);
-    nitroBar.style.width = (pct * 100) + "%";
+  function drawEnemies() {
+    enemies.forEach(e => {
+      ctx.fillStyle = "white";
+      ctx.fillRect(e.x, e.y, e.width, e.height);
+    });
   }
 
   function loop() {
     if (running) {
       frame++;
 
-      if (shieldCooldown > 0) shieldCooldown -= 1 * timeScale;
-
-      updateNitro();
       updateRoad();
       updatePlayer();
       updateEnemies();
-      updatePowerUps();
-
-      updateExplosions();
-      updateSparks();
-      updateSmoke();
-      updateTireDust();
-      updateSkidMarks();
-      updateSpeedLines();
       updateDebris();
       updateBillboards();
 
       if (!crashed && frame % 70 === 0) spawnEnemy();
-      if (!crashed && frame % 300 === 0) spawnPowerUp();
       if (!crashed && frame % 210 === 0) spawnBillboard();
-
-      if (!crashed && frame % 260 === 0) {
-        baseSpeed += 0.45;
-        speedEl.textContent = (baseSpeed / 5).toFixed(1);
-      }
     }
 
     ctx.save();
@@ -1369,28 +637,11 @@
     ctx.rotate(camTilt);
     ctx.translate(-w/2, -h/2);
 
-    if (camShake > 0) {
-      const sx = rand(-camShake, camShake);
-      const sy = rand(-camShake, camShake);
-      ctx.translate(sx, sy);
-      camShake *= 0.92;
-    }
-
     drawRoadTexture();
     drawBillboards();
-    drawSkidMarks();
-    drawTireDust();
-    drawPowerUps();
     drawEnemies();
-    drawPlayerLights();
-    drawNitroFlames();
     drawPlayer();
-    drawShieldEffect();
-    drawSmoke();
-    drawExplosions();
     drawDebris();
-    drawSparks();
-    drawSpeedLines();
 
     ctx.restore();
 
@@ -1400,6 +651,27 @@
   player.x = w / 2 - player.width/2;
   player.targetX = player.x;
   player.y = h - 140;
+
+  startBtn.addEventListener("click", () => {
+    startScreen.style.display = "none";
+    running = true;
+  });
+
+  leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingLeft = true; });
+  leftBtn.addEventListener("touchend", () => holdingLeft = false);
+
+  rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); holdingRight = true; });
+  rightBtn.addEventListener("touchend", () => holdingRight = false);
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") holdingLeft = true;
+    if (e.key === "ArrowRight") holdingRight = true;
+  });
+
+  window.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft") holdingLeft = false;
+    if (e.key === "ArrowRight") holdingRight = false;
+  });
 
   requestAnimationFrame(loop);
 </script>
