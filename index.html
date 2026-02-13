@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
-  <title>ROADSTER - Burnout Edition</title>
+  <title>ROADSTER 2.1 - Night Edition</title>
 
   <style>
     body {
@@ -305,7 +305,7 @@
     <div id="introFlash" class="flashAnim"></div>
     <div id="introText">DANIEL_SDILI UVÁDÍ:</div>
     <div id="mainLogo">ROADSTER</div>
-    <div id="subText">Burnout Canvas Edition</div>
+    <div id="subText">Burnout Night Edition</div>
     <button id="startBtn">START</button>
   </div>
 
@@ -369,6 +369,9 @@
 
   let camShake = 0;
 
+  // CAMERA TILT
+  let camTilt = 0;
+
   // SHIELD
   let shieldActive = false;
   let shieldCooldown = 0;
@@ -382,6 +385,9 @@
 
   // POWERUPS
   let powerUps = [];
+
+  // DEBRIS
+  let debris = [];
 
   const player = {
     x: 0,
@@ -552,35 +558,139 @@
     });
   }
 
+  // 🌙 NIGHT BURNOUT ROAD TEXTURE
   function drawRoadTexture() {
     const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, "#1a1a1a");
-    grad.addColorStop(1, "#0b0b0b");
+    grad.addColorStop(0, "#0b0b0f");
+    grad.addColorStop(0.5, "#050508");
+    grad.addColorStop(1, "#000000");
+
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
+    // wet shine
+    ctx.globalAlpha = 0.12;
+    const shine = ctx.createLinearGradient(0, 0, 0, h);
+    shine.addColorStop(0, "rgba(255,255,255,0.0)");
+    shine.addColorStop(0.4, "rgba(255,255,255,0.25)");
+    shine.addColorStop(0.7, "rgba(255,255,255,0.05)");
+    shine.addColorStop(1, "rgba(255,255,255,0.0)");
+    ctx.fillStyle = shine;
+    ctx.fillRect(w/2 - 90, 0, 180, h);
+    ctx.globalAlpha = 1;
+
+    // dark smudges
     ctx.globalAlpha = 0.22;
-    for (let i = 0; i < 10; i++) {
-      ctx.fillStyle = "rgba(0,0,0,0.7)";
-      ctx.fillRect(0, (i * 120 + (frame * 2)) % (h + 200) - 200, w, 70);
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = "rgba(0,0,0,0.9)";
+      ctx.fillRect(
+        rand(0, w),
+        (i * 120 + (frame * 2.2)) % (h + 240) - 240,
+        rand(40, 120),
+        rand(70, 140)
+      );
     }
     ctx.globalAlpha = 1;
 
+    // cracks
+    ctx.globalAlpha = 0.12;
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 18; i++) {
+      ctx.beginPath();
+      const startX = rand(w/2 - 120, w/2 + 120);
+      let y = rand(0, h);
+
+      ctx.moveTo(startX, y);
+
+      for (let j = 0; j < 6; j++) {
+        y += rand(30, 80);
+        ctx.lineTo(startX + rand(-25, 25), y);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // grain
     ctx.globalAlpha = 0.10;
-    for (let i = 0; i < 120; i++) {
-      ctx.fillStyle = (Math.random() > 0.5) ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.20)";
-      ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+    for (let i = 0; i < 220; i++) {
+      ctx.fillStyle = (Math.random() > 0.5)
+        ? "rgba(255,255,255,0.18)"
+        : "rgba(0,0,0,0.35)";
+      ctx.fillRect(rand(0, w), rand(0, h), 1, 1);
     }
     ctx.globalAlpha = 1;
 
-    ctx.fillStyle = "rgba(255,215,0,0.35)";
+    // neon borders
+    ctx.globalAlpha = 0.38;
+    ctx.fillStyle = "rgba(255,215,0,0.9)";
     ctx.fillRect(0, 0, 10, h);
     ctx.fillRect(w - 10, 0, 10, h);
+    ctx.globalAlpha = 1;
 
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = "rgba(255,215,0,1)";
+    ctx.fillRect(0, 0, 22, h);
+    ctx.fillRect(w - 22, 0, 22, h);
+    ctx.globalAlpha = 1;
+
+    // lane lines
     laneLines.forEach(line => {
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.fillRect(line.x - 5, line.y, 10, 80);
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.fillRect(line.x - 4, line.y, 8, 80);
+      ctx.globalAlpha = 1;
     });
+
+    // speed sweep
+    if (speed > 9) {
+      ctx.globalAlpha = 0.10;
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.fillRect(0, (frame * 4) % h - 200, w, 160);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // 🚗 HEADLIGHT CONE
+  function drawHeadlightCone(x, y, width, height) {
+    const cx = x + width / 2;
+    const cy = y + 20;
+
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+
+    const g = ctx.createRadialGradient(cx, cy, 10, cx, cy + 200, 250);
+    g.addColorStop(0, "rgba(255,255,220,0.9)");
+    g.addColorStop(0.35, "rgba(255,255,200,0.22)");
+    g.addColorStop(1, "rgba(255,255,200,0)");
+
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 170, width * 2.2, height * 2.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // 🚗 REAR LIGHT GLOW
+  function drawRearGlow(x, y, width, height) {
+    const cx = x + width / 2;
+    const cy = y + height - 10;
+
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+
+    const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, 120);
+    g.addColorStop(0, "rgba(255,40,40,0.9)");
+    g.addColorStop(0.4, "rgba(255,40,40,0.25)");
+    g.addColorStop(1, "rgba(255,40,40,0)");
+
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 15, width * 1.3, 70, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
   }
 
   // 🚓 POLICE LIGHT CONE
@@ -645,7 +755,6 @@
     });
   }
 
-  // ⭐ NEW SKID MARKS (REALISTIC)
   function spawnSkidMark(x, y, strength) {
     skidMarks.push({
       x,
@@ -740,7 +849,6 @@
     }
   }
 
-  // ⭐ NEW: NITRO VIGNETTE
   function drawNitroVignette() {
     if (!nitroActive || crashed) return;
 
@@ -807,7 +915,7 @@
     ctx.closePath();
     ctx.fill();
 
-    // ⭐ GLOSSY PAINT HIGHLIGHT
+    // glossy paint highlight
     ctx.globalAlpha = 0.18;
     ctx.fillStyle = "white";
     ctx.beginPath();
@@ -839,7 +947,7 @@
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // wheels
+    // wheels blink by speed
     const blinkRate = Math.max(6, Math.floor(26 - (speed * 1.25)));
     const blinkWheel = (frame % blinkRate < blinkRate / 2);
 
@@ -916,6 +1024,10 @@
 
   function drawEnemies() {
     enemies.forEach(e => {
+      // headlight + rear glow for all
+      drawHeadlightCone(e.x, e.y, e.width, e.height);
+      drawRearGlow(e.x, e.y, e.width, e.height);
+
       if (e.type === "police") drawPoliceLightCone(e.x, e.y, e.width, e.height);
 
       if (e.type === "sedan") drawCarModel(e.x, e.y, e.width, e.height, "#aaaaaa", "#444444", e.angle, null, false);
@@ -924,6 +1036,56 @@
       if (e.type === "van") drawCarModel(e.x, e.y, e.width, e.height, "#ffffff", "#aaaaaa", e.angle, null, false);
       if (e.type === "truck") drawCarModel(e.x, e.y, e.width, e.height, "#666666", "#222222", e.angle, null, false);
       if (e.type === "police") drawCarModel(e.x, e.y, e.width, e.height, "#111111", "#333333", e.angle, "POLICE", true);
+    });
+  }
+
+  function drawPlayerLights() {
+    drawHeadlightCone(player.x, player.y, player.width, player.height);
+    drawRearGlow(player.x, player.y, player.width, player.height);
+  }
+
+  // 💥 DEBRIS SYSTEM
+  function spawnDebris(x, y) {
+    for (let i = 0; i < 22; i++) {
+      debris.push({
+        x: x + rand(-10, 10),
+        y: y + rand(-10, 10),
+        vx: rand(-10, 10),
+        vy: rand(-18, 10),
+        rot: rand(0, Math.PI * 2),
+        rotVel: rand(-0.25, 0.25),
+        life: rand(90, 170),
+        size: rand(6, 16),
+        color: ["#444", "#666", "#999", "#222"][Math.floor(Math.random()*4)]
+      });
+    }
+  }
+
+  function updateDebris() {
+    debris.forEach((d, idx) => {
+      d.life -= 1 * timeScale;
+      d.x += d.vx * timeScale;
+      d.y += d.vy * timeScale;
+      d.vy += 0.55 * timeScale;
+      d.vx *= 0.98;
+      d.rot += d.rotVel * timeScale;
+
+      if (d.life <= 0) debris.splice(idx, 1);
+    });
+  }
+
+  function drawDebris() {
+    debris.forEach(d => {
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      ctx.rotate(d.rot);
+
+      ctx.globalAlpha = Math.max(d.life / 170, 0) * 0.9;
+      ctx.fillStyle = d.color;
+      ctx.fillRect(-d.size/2, -d.size/2, d.size, d.size * 0.7);
+
+      ctx.restore();
+      ctx.globalAlpha = 1;
     });
   }
 
@@ -943,14 +1105,20 @@
 
     player.x += (player.targetX - player.x) * 0.25;
 
+    const driftStrength = Math.min(Math.abs(player.x - player.lastX) / 5, 2.5);
+
     if (!crashed) {
       player.angle = (player.targetX - player.x) * 0.003;
+
+      // CAMERA TILT based on drift
+      const desiredTilt = (player.x - player.lastX) * 0.003;
+      camTilt += (desiredTilt - camTilt) * 0.15;
+
     } else {
       player.angle += player.spinVel * timeScale;
       player.spinVel *= 0.985;
+      camTilt *= 0.92;
     }
-
-    const driftStrength = Math.min(Math.abs(player.x - player.lastX) / 4, 2.5);
 
     if (!crashed) {
       let dustPower = 0.8 + driftStrength;
@@ -999,7 +1167,6 @@
     );
   }
 
-  // ⭐ UPDATED EXPLOSION WITH SHOCKWAVE
   function spawnExplosion(x, y) {
     explosions.push({ x, y, radius: 10, life: 70, shock: 0 });
   }
@@ -1033,7 +1200,6 @@
     explosions.forEach(ex => {
       ctx.save();
 
-      // shockwave ring
       ctx.globalAlpha = Math.max(ex.life / 70, 0) * 0.55;
       ctx.strokeStyle = "rgba(255,255,255,0.9)";
       ctx.lineWidth = 3;
@@ -1151,7 +1317,6 @@
     player.spinVel = 0.38;
     camShake = 24;
 
-    // WHITE FLASH
     canvas.style.filter = "brightness(2.4)";
     setTimeout(() => canvas.style.filter = "", 120);
 
@@ -1165,6 +1330,7 @@
     spawnExplosion(cx, cy);
     spawnSparks(cx, cy);
     spawnSmoke(cx, cy);
+    spawnDebris(cx, cy);
 
     canvas.classList.add("zoomCrash");
     setTimeout(() => canvas.classList.remove("zoomCrash"), 800);
@@ -1205,6 +1371,7 @@
     skidMarks = [];
     speedLines = [];
     powerUps = [];
+    debris = [];
 
     scoreEl.textContent = score;
     speedEl.textContent = "1";
@@ -1293,6 +1460,7 @@
       updateTireDust();
       updateSkidMarks();
       updateSpeedLines();
+      updateDebris();
 
       if (!crashed && frame % 70 === 0) spawnEnemy();
       if (!crashed && frame % 300 === 0) spawnPowerUp();
@@ -1303,43 +1471,37 @@
       }
     }
 
+    ctx.save();
+
+    // CAMERA TILT EFFECT
+    ctx.translate(w/2, h/2);
+    ctx.rotate(camTilt);
+    ctx.translate(-w/2, -h/2);
+
     if (camShake > 0) {
-      ctx.save();
       const sx = rand(-camShake, camShake);
       const sy = rand(-camShake, camShake);
       ctx.translate(sx, sy);
       camShake *= 0.92;
-
-      drawRoadTexture();
-      drawSkidMarks();
-      drawTireDust();
-      drawPowerUps();
-      drawEnemies();
-      drawNitroFlames();
-      drawPlayer();
-      drawShieldEffect();
-      drawSmoke();
-      drawExplosions();
-      drawSparks();
-      drawSpeedLines();
-
-      ctx.restore();
-    } else {
-      drawRoadTexture();
-      drawSkidMarks();
-      drawTireDust();
-      drawPowerUps();
-      drawEnemies();
-      drawNitroFlames();
-      drawPlayer();
-      drawShieldEffect();
-      drawSmoke();
-      drawExplosions();
-      drawSparks();
-      drawSpeedLines();
     }
 
-    // NITRO VIGNETTE LAST
+    drawRoadTexture();
+    drawSkidMarks();
+    drawTireDust();
+    drawPowerUps();
+    drawEnemies();
+    drawPlayerLights();
+    drawNitroFlames();
+    drawPlayer();
+    drawShieldEffect();
+    drawSmoke();
+    drawExplosions();
+    drawDebris();
+    drawSparks();
+    drawSpeedLines();
+
+    ctx.restore();
+
     drawNitroVignette();
 
     requestAnimationFrame(loop);
