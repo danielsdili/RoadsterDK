@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
   <title>ROADSTER 2.1 - Night Edition</title>
@@ -15,11 +14,21 @@
       color: white;
       touch-action: none;
     }
-#hud {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 20px;
-  letter-spacing: 2px;
-}
+
+    #hud {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 10px 14px;
+      box-sizing: border-box;
+      opacity: 0.95;
+      gap: 10px;
+      align-items: center;
+    }
 
     #hudLeft, #hudRight {
       display: flex;
