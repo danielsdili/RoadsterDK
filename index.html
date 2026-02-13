@@ -583,9 +583,9 @@
     });
   }
 
-  // 🚓 POLICE LIGHT CONE (SLOWER + STRONG BLUE/RED)
+  // 🚓 POLICE LIGHT CONE
   function drawPoliceLightCone(x, y, width, height) {
-    const blink = (frame % 18 < 9); // pomalejší blikání
+    const blink = (frame % 18 < 9);
 
     ctx.save();
     ctx.globalAlpha = blink ? 0.95 : 0.85;
@@ -645,13 +645,16 @@
     });
   }
 
+  // ⭐ NEW SKID MARKS (REALISTIC)
   function spawnSkidMark(x, y, strength) {
     skidMarks.push({
       x,
       y,
-      life: 160 * strength,
+      life: 220 * strength,
       width: rand(2, 4),
-      length: rand(22, 50)
+      length: rand(28, 65),
+      angle: rand(-0.25, 0.25),
+      alpha: rand(0.15, 0.35)
     });
   }
 
@@ -664,9 +667,17 @@
 
   function drawSkidMarks() {
     skidMarks.forEach(m => {
-      ctx.globalAlpha = Math.max(m.life / 160, 0) * 0.35;
-      ctx.fillStyle = "rgba(0,0,0,0.9)";
-      ctx.fillRect(m.x, m.y, m.width, m.length);
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(m.angle);
+
+      ctx.globalAlpha = Math.max(m.life / 220, 0) * m.alpha;
+      ctx.fillStyle = "rgba(0,0,0,0.95)";
+
+      ctx.fillRect(-m.width, 0, m.width, m.length);
+      ctx.fillRect(m.width + 2, 0, m.width, m.length);
+
+      ctx.restore();
       ctx.globalAlpha = 1;
     });
   }
@@ -714,7 +725,7 @@
       const fx = px + rand(-12, 12);
       const fy = py + rand(0, 14);
 
-      const g = ctx.createRadialGradient(fx, fy, 4, fx, fy, 40);
+      const g = ctx.createRadialGradient(fx, fy, 4, fx, fy, 45);
       g.addColorStop(0, "rgba(255,255,255,1)");
       g.addColorStop(0.25, "rgba(0,255,255,0.95)");
       g.addColorStop(0.6, "rgba(0,120,255,0.75)");
@@ -723,10 +734,25 @@
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(fx, fy, 40, 0, Math.PI * 2);
+      ctx.arc(fx, fy, 45, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
+  }
+
+  // ⭐ NEW: NITRO VIGNETTE
+  function drawNitroVignette() {
+    if (!nitroActive || crashed) return;
+
+    const g = ctx.createRadialGradient(w/2, h/2, 60, w/2, h/2, Math.max(w, h));
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(0.6, "rgba(0,0,0,0.08)");
+    g.addColorStop(1, "rgba(0,0,0,0.65)");
+
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
   }
 
   function drawShieldEffect() {
@@ -780,6 +806,18 @@
     ctx.lineTo(-bottomW/2, height/2);
     ctx.closePath();
     ctx.fill();
+
+    // ⭐ GLOSSY PAINT HIGHLIGHT
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.moveTo(-topW/2 + 10, -height/2 + 8);
+    ctx.lineTo(0, -height/2 + 10);
+    ctx.lineTo(-bottomW/2 + 20, height/2 - 25);
+    ctx.lineTo(-bottomW/2 + 5, height/2 - 35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
     ctx.fillStyle = "rgba(20,20,20,0.85)";
     ctx.beginPath();
@@ -843,7 +881,6 @@
     ctx.fillRect(-bottomW/2 + 6, height/2 - 8, 14, 6);
     ctx.fillRect(bottomW/2 - 20, height/2 - 8, 14, 6);
 
-    // 🚓 POLICE LIGHTBAR (SLOWER + CLEAR COLORS)
     if (siren) {
       const blink = (frame % 18 < 9);
 
@@ -962,8 +999,9 @@
     );
   }
 
+  // ⭐ UPDATED EXPLOSION WITH SHOCKWAVE
   function spawnExplosion(x, y) {
-    explosions.push({ x, y, radius: 10, life: 70 });
+    explosions.push({ x, y, radius: 10, life: 70, shock: 0 });
   }
 
   function spawnSparks(x, y) {
@@ -995,6 +1033,14 @@
     explosions.forEach(ex => {
       ctx.save();
 
+      // shockwave ring
+      ctx.globalAlpha = Math.max(ex.life / 70, 0) * 0.55;
+      ctx.strokeStyle = "rgba(255,255,255,0.9)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(ex.x, ex.y, ex.shock * 2.2, 0, Math.PI * 2);
+      ctx.stroke();
+
       ctx.globalAlpha = Math.max(ex.life / 70, 0) * 0.8;
       ctx.strokeStyle = "rgba(255,220,120,0.95)";
       ctx.lineWidth = 6;
@@ -1021,6 +1067,7 @@
     explosions.forEach((ex, idx) => {
       ex.life -= 1 * timeScale;
       ex.radius += 2.1 * timeScale;
+      ex.shock += 6.5 * timeScale;
       if (ex.life <= 0) explosions.splice(idx, 1);
     });
   }
@@ -1077,7 +1124,6 @@
     });
   }
 
-  // ✅ CRASH FIXED SHIELD
   function crash(enemy) {
     if (shieldActive && shieldCooldown <= 0) {
       shieldActive = false;
@@ -1097,7 +1143,6 @@
       enemy.vx = rand(-4.5, 4.5);
 
       player.targetX += rand(-80, 80);
-
       return;
     }
 
@@ -1105,6 +1150,10 @@
     timeScale = 0.07;
     player.spinVel = 0.38;
     camShake = 24;
+
+    // WHITE FLASH
+    canvas.style.filter = "brightness(2.4)";
+    setTimeout(() => canvas.style.filter = "", 120);
 
     enemy.crashed = true;
     enemy.spinVel = rand(0.30, 0.55);
@@ -1289,6 +1338,9 @@
       drawSparks();
       drawSpeedLines();
     }
+
+    // NITRO VIGNETTE LAST
+    drawNitroVignette();
 
     requestAnimationFrame(loop);
   }
